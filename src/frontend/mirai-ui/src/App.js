@@ -29,14 +29,19 @@ import TestUI from "./components/TestUI";
 
 function App() {
   const [selectedTab, setSelectedTab] = useState("ChatNow");
-
+  const [darkMode, setDarkMode] = useState(false);
+  const [APITest, setAPITest] = useState(false);
   return (
     <>
-      <div className="test-ui">
-        <TestUI />
-      </div>
-      <div className="admin-dashboard">
-        <Sidebar setSelectedTab={setSelectedTab} />
+      <div className="test-ui">{APITest && <TestUI />}</div>
+      <div className={`admin-dashboard ${darkMode ? "darkmode" : ""}`}>
+        <Sidebar
+          setSelectedTab={setSelectedTab}
+          APITest={APITest}
+          setAPITest={setAPITest}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+        />
         {selectedTab === "ChatNow" && <ChatNow />}
         {selectedTab === "LLMPerformance" && <LLMPerformance />}
         {selectedTab === "APIModuleConfig" && <APIModuleConfig />}

@@ -1,6 +1,13 @@
 import React from "react";
+import { useState } from "react";
 
-const Sidebar = ({ setSelectedTab }) => {
+const Sidebar = ({
+  setSelectedTab,
+  APITest,
+  setAPITest,
+  darkMode,
+  setDarkMode,
+}) => {
   return (
     <div className="sidebar">
       <h2>MirAI Admin</h2>
@@ -13,6 +20,15 @@ const Sidebar = ({ setSelectedTab }) => {
         </li>
         <li onClick={() => setSelectedTab("ChatNow")}>Chat Now</li>
       </ul>
+      <button
+        className="dark-mode-toggle"
+        onClick={() => setDarkMode(!darkMode)}
+      >
+        {darkMode ? "Light Mode" : "Dark Mode"}
+      </button>
+      <button className="api-test-toggle" onClick={() => setAPITest(!APITest)}>
+        {APITest ? "Hide API Test" : "Show API Test"}
+      </button>
     </div>
   );
 };
