@@ -1,2 +1,10 @@
-src/env/
-src/app/ttsModule/__pycache__/
+src/backend/api/routers/__pycache__/
+src/backend/api/routers/tts/__pycache__/
+src/backend/api/routers/tts/models/__pycache__/
+src/backend/__pycache__/
+src/backend/api/services/__pycache__/
+src/backend/api/ttsModule/output/
+src/.python-version
+src/backend/api/__pycache__
+src/backend/ttsModule/__pycache__
+src/backend/.venv
