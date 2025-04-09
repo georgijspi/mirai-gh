@@ -3,7 +3,7 @@ import uvicorn
 import logging
 import os
 
-from api.routers import tts, auth # add llm, stt, etc.
+from api.routers import tts, auth, llm, agent, conversation
 from ttsModule.ttsModule import tts as tts_model
 from api.database import connect_to_mongodb, close_mongodb_connection
 
@@ -38,6 +38,7 @@ async def startup_event():
     
     os.makedirs("ttsModule/output", exist_ok=True)
     os.makedirs("ttsModule/voicelines/cleaned", exist_ok=True)
+    os.makedirs("ttsModule/voicelines/messages", exist_ok=True)
     logger.info("Startup: Ensured required directories exist")
     
     try:
@@ -57,9 +58,10 @@ api_router = APIRouter(prefix="/mirai/api")
 
 api_router.include_router(tts.router)
 api_router.include_router(auth.router)
-# api_router.include_router(stt.router)
-# api_router.include_router(llm.router)
-logger.info("Included TTS and Auth routers under /mirai/api")
+api_router.include_router(llm.router)
+api_router.include_router(agent.router)
+api_router.include_router(conversation.router)
+logger.info("Included all routers under /mirai/api")
 
 # Include the main API router in the FastAPI app
 app.include_router(api_router)

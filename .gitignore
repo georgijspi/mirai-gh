@@ -8,3 +8,6 @@ src/.python-version
 src/backend/api/__pycache__
 src/backend/ttsModule/__pycache__
 src/backend/.venv
+src/data/agent/*
+src/data/conversation/*
+src/backend/promptBuilderModule/__pycache__

@@ -1,16 +1,18 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Query, File, UploadFile
+from fastapi.responses import FileResponse, JSONResponse
 import os
 import time
 import uuid
 import logging
+from typing import List, Optional
 
 # Set environment variables before importing TTS module
 os.environ["TORCH_LOAD_WEIGHTS_ONLY"] = "0"
 
 from .. import models
-from ..security import get_current_user
+from ..security import get_current_user, DEV_MODE
 from ttsModule.ttsModule import generate_speech, tts
+from ..services.tts_service import generate_voice, get_available_voices, get_voice_path
 
 logger = logging.getLogger(__name__)
 
@@ -57,59 +59,89 @@ def get_speaker_path(speaker_name: str) -> str:
 
 # --- API Endpoints ---
 
-@router.post("/generate", response_model=models.SynthesisResponse)
-async def generate_speech_endpoint(
-    request: models.SynthesisRequest,
-    background_tasks: BackgroundTasks,
-    current_user: dict = Depends(get_current_user),
-    tts_ready: None = Depends(check_tts_model_loaded)
+@router.post("/generate", response_model=models.TTSResponse)
+async def generate_tts(
+    tts_request: models.TTSRequest,
+    user = Depends(get_current_user)
 ):
-    """
-    Starts background task to synthesize speech from text using a specified speaker.
-    Defaults to 'morgan' if no speaker is provided.
-    """
+    """Generate a voice line from text."""
     try:
-        speaker_wav_path = get_speaker_path(request.speaker or "morgan")
-    except HTTPException as http_exc:
-        raise http_exc
+        # Get the output wav path
+        output_path = await generate_voice(
+            text=tts_request.text, 
+            voice_speaker=tts_request.speaker,
+            message_uid=tts_request.message_uid,
+            conversation_uid=tts_request.conversation_uid
+        )
+        
+        return models.TTSResponse(
+            message="Speech generation started in background",
+            file_path=output_path
+        )
     except Exception as e:
-        logger.error(f"Error resolving speaker path: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error resolving speaker.")
+        logger.error(f"Failed to generate speech: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate speech: {str(e)}"
+        )
 
-    unique_id = str(uuid.uuid4())
-    output_filename = f"output_{unique_id}.wav"
-    output_path = os.path.join(OUTPUT_DIR, output_filename)
-
-    try:
-        # Add the generation task to the background
-        background_tasks.add_task(generate_speech, speaker_wav_path, request.text, output_path)
-        logger.info(f"Background TTS task added for {output_filename}")
-    except Exception as e:
-        logger.error(f"Failed to add background task: {e}")
-        raise HTTPException(status_code=500, detail="Failed to start speech generation task.")
-
-    return {
-        "message": "Speech generation started in background",
-        "output_filename": output_filename,
-    }
-
-@router.post("/download", response_class=FileResponse)
-async def download_speech_endpoint(
-    request: models.FileRequest,
-    current_user: dict = Depends(get_current_user)
+@router.get("/download/{message_uid}")
+async def download_tts(
+    message_uid: str,
+    conversation_uid: Optional[str] = None,
+    user = Depends(get_current_user)
 ):
-    """
-    Downloads a previously generated speech file.
-    Requires 'filename' in the POST request body.
-    """
-    # Basic filename validation
-    if not request.filename or ".." in request.filename or "/" in request.filename:
-        raise HTTPException(status_code=400, detail="Invalid filename provided.")
+    """Download a generated voice line."""
+    try:
+        # Get the voice file path
+        voice_path = await get_voice_path(message_uid, conversation_uid)
+        
+        if not voice_path:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Voice file for message {message_uid} not found"
+            )
+        
+        # Get the absolute path
+        abs_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+            "..",
+            voice_path
+        )
+        
+        # Check if the file exists
+        if not os.path.exists(abs_path):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Voice file not found at path: {abs_path}"
+            )
+        
+        # Return the file
+        return FileResponse(
+            abs_path,
+            media_type="audio/wav",
+            filename=f"message_{message_uid}.wav"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to download voice file: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to download voice file: {str(e)}"
+        )
 
-    file_path = os.path.join(OUTPUT_DIR, request.filename)
-
-    if not os.path.exists(file_path):
-        logger.warning(f"Download request for non-existent file: {request.filename}")
-        raise HTTPException(status_code=404, detail="File not found")
-
-    return FileResponse(file_path, media_type="audio/wav", filename=request.filename)
+@router.get("/voices", response_model=List[models.Voice])
+async def list_voices(
+    user = Depends(get_current_user)
+):
+    """Get a list of available voices."""
+    try:
+        voices = await get_available_voices()
+        return voices
+    except Exception as e:
+        logger.error(f"Failed to get available voices: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get available voices: {str(e)}"
+        )
