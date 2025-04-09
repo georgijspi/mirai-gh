@@ -19,11 +19,10 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
-    # Optional NVIDIA GPU support
+    # GPU support using NVIDIA runtime
+    runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
-    # Use runtime configuration if nvidia-container-runtime is installed
-    # runtime: nvidia
 
 volumes:
   mongodb_data:
