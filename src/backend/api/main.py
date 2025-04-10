@@ -3,7 +3,7 @@ import uvicorn
 import logging
 import os
 
-from api.routers import tts, auth, llm, agent, conversation
+from api.routers import tts, auth, llm, agent, conversation, statistics
 from ttsModule.ttsModule import tts as tts_model
 from api.database import connect_to_mongodb, close_mongodb_connection
 
@@ -23,7 +23,6 @@ async def startup_event():
     logger.info("Startup: Loading TTS model...")
     
     try:
-        # Import the TTS module
         from ttsModule.ttsModule import tts
         
         if tts is None:
@@ -61,9 +60,9 @@ api_router.include_router(auth.router)
 api_router.include_router(llm.router)
 api_router.include_router(agent.router)
 api_router.include_router(conversation.router)
+api_router.include_router(statistics.router)
 logger.info("Included all routers under /mirai/api")
 
-# Include the main API router in the FastAPI app
 app.include_router(api_router)
 
 @app.get("/", tags=["Health Check"])
@@ -74,5 +73,4 @@ async def read_root():
 
 if __name__ == "__main__":
     logger.info("Starting MirAI API server with uvicorn...")
-    # Consider making host and port configurable (e.g., via environment variables)
     uvicorn.run(app, host="0.0.0.0", port=8001, log_level="info")

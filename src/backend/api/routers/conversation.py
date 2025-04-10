@@ -379,7 +379,7 @@ async def process_agent_response(
         message_uid = str(uuid.uuid4())
         
         # Generate voice for the response
-        voice_path = await generate_voice(
+        voice_path, audio_duration = await generate_voice(
             text=response_text,
             voice_speaker=agent_config["voice_speaker"],
             message_uid=message_uid,
@@ -403,10 +403,12 @@ async def process_agent_response(
         elif "config_uid" in llm_config_json:
             llm_config_id = str(llm_config_json["config_uid"]) if isinstance(llm_config_json["config_uid"], (ObjectId, str)) else llm_config_json["config_uid"]
         
-        # Add response time as metadata if available
+        # Add response time and audio duration as metadata
         metadata = {}
         if response_time:
             metadata["response_time"] = f"{response_time:.2f}"
+        if audio_duration:
+            metadata["audio_duration"] = f"{audio_duration:.2f}"
         
         # Add agent message to the conversation
         await add_message(
@@ -423,33 +425,7 @@ async def process_agent_response(
         logger.info(f"Agent response added to conversation: {conversation_uid}")
     except Exception as e:
         logger.error(f"Error processing agent response: {str(e)}")
-        # Add an error message to the conversation
-        try:
-            # Make sure agent_uid is a string
-            agent_id = str(agent_uid) if isinstance(agent_uid, ObjectId) else agent_uid
-            
-            # Get a safe default for llm_config_uid if not available
-            llm_config_id = None
-            if 'llm_config_json' in locals() and llm_config_json:
-                if "llm_config_uid" in llm_config_json:
-                    llm_config_id = str(llm_config_json["llm_config_uid"]) if isinstance(llm_config_json["llm_config_uid"], (ObjectId, str)) else llm_config_json["llm_config_uid"]
-                elif "config_uid" in llm_config_json:
-                    llm_config_id = str(llm_config_json["config_uid"]) if isinstance(llm_config_json["config_uid"], (ObjectId, str)) else llm_config_json["config_uid"]
-            elif 'llm_config' in locals() and llm_config:
-                if "llm_config_uid" in llm_config:
-                    llm_config_id = str(llm_config["llm_config_uid"]) if isinstance(llm_config["llm_config_uid"], ObjectId) else llm_config["llm_config_uid"]
-                elif "config_uid" in llm_config:
-                    llm_config_id = str(llm_config["config_uid"]) if isinstance(llm_config["config_uid"], ObjectId) else llm_config["config_uid"]
-            
-            await add_message(
-                conversation_uid=conversation_uid,
-                content=f"I'm sorry, I encountered an error while processing your request: {str(e)}",
-                message_type=MessageType.AGENT,
-                agent_uid=agent_id,
-                llm_config_uid=llm_config_id
-            )
-        except Exception as inner_e:
-            logger.error(f"Failed to add error message to conversation: {str(inner_e)}")
+        raise
 
 @router.post("/rate_message", response_model=MessageResponse)
 async def rate_message(

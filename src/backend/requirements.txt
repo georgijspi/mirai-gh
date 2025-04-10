@@ -4,6 +4,7 @@ python-multipart
 python-jose[cryptography]
 passlib[bcrypt]
 pydantic[email]
+pydub
 motor
 TTS==0.22.0
 torch>=2.1.0
