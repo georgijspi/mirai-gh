@@ -249,6 +249,9 @@ async def send_message(
         # Get user ID from current user
         user_uid = current_user.get("user_uid") if isinstance(current_user, dict) else current_user.user_uid
         
+        # Log the incoming request with conversation_uid
+        logger.info(f"Received message request for conversation: {message_data.conversation_uid}")
+        
         # Validate conversation
         conversation = await get_conversation(message_data.conversation_uid)
         if not conversation:
@@ -257,6 +260,9 @@ async def send_message(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Conversation not found"
             )
+        
+        # Log the actual conversation data from DB to confirm conversation_uid
+        logger.info(f"Found conversation in DB with uid: {conversation.get('conversation_uid')}")
         
         # Check if the conversation belongs to the current user
         if conversation["user_uid"] != user_uid:
@@ -287,27 +293,32 @@ async def send_message(
         # Start response time tracking
         start_time = time.time()
         
+        # Make sure to use the conversation_uid from database to ensure consistency
+        conversation_uid = conversation["conversation_uid"]
+        
         # Add user message to the conversation
+        logger.info(f"Adding user message to conversation: {conversation_uid}")
         user_message = await add_message(
-            conversation_uid=message_data.conversation_uid,
+            conversation_uid=conversation_uid,
             content=message_data.content,
             message_type=MessageType.USER
         )
         
         # Get conversation history
-        conversation_messages = await get_conversation_messages(message_data.conversation_uid)
+        conversation_messages = await get_conversation_messages(conversation_uid)
         
         # Process the message and generate a response
         # Use a background task for the agent response to avoid blocking
+        logger.info(f"Starting background task for conversation: {conversation_uid}")
         background_tasks.add_task(
             process_agent_response,
-            conversation_uid=message_data.conversation_uid,
+            conversation_uid=conversation_uid,
             user_message=user_message["content"],
             conversation_messages=conversation_messages,
             start_time=start_time
         )
         
-        logger.info(f"User message sent and agent response processing started for conversation: {message_data.conversation_uid}")
+        logger.info(f"User message sent and agent response processing started for conversation: {conversation_uid}")
         return user_message
     except HTTPException:
         raise
@@ -326,9 +337,13 @@ async def process_agent_response(
 ):
     """Process an agent response to a user message."""
     try:
+        # Log conversation UID to help debug issues
+        logger.info(f"Processing agent response for conversation: {conversation_uid}")
+        
         # Get conversation history
         conversation = await get_conversation(conversation_uid)
         agent_uid = conversation.get("agent_uid")
+        logger.info(f"Retrieved conversation data with agent_uid: {agent_uid}")
         
         # Get conversation messages if not provided
         if conversation_messages is None:
@@ -378,6 +393,9 @@ async def process_agent_response(
         # Generate a unique ID for the message
         message_uid = str(uuid.uuid4())
         
+        # Log before calling generate_voice to confirm the conversation_uid
+        logger.info(f"Generating voice for message_uid: {message_uid} in conversation: {conversation_uid}")
+        
         # Generate voice for the response
         voice_path, audio_duration = await generate_voice(
             text=response_text,
@@ -385,7 +403,7 @@ async def process_agent_response(
             message_uid=message_uid,
             conversation_uid=conversation_uid
         )
-        logger.info(f"Generated voice for message: {message_uid}")
+        logger.info(f"Generated voice at path: {voice_path}")
         
         # Calculate response time - MOVED HERE to include TTS generation time
         response_time = None
@@ -409,6 +427,9 @@ async def process_agent_response(
             metadata["response_time"] = f"{response_time:.2f}"
         if audio_duration:
             metadata["audio_duration"] = f"{audio_duration:.2f}"
+        
+        # Log before adding message to confirm consistency
+        logger.info(f"Adding agent message to conversation: {conversation_uid}, message_uid: {message_uid}")
         
         # Add agent message to the conversation
         await add_message(

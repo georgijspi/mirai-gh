@@ -35,8 +35,16 @@ async def create_conversation(user_uid: str, title: str, agent_uid: str) -> Dict
         logger.error(f"Failed to create conversation: Agent {agent_uid} not found")
         raise ValueError(f"Agent with ID {agent_uid} not found")
     
+    # Generate a unique ID for the conversation
     conversation_uid = str(uuid.uuid4())
+    logger.info(f"Generated new conversation_uid: {conversation_uid}")
+    
     timestamp = datetime.utcnow()
+    
+    # Create conversation directory
+    conversation_dir = os.path.join(CONVERSATION_DIR, conversation_uid)
+    os.makedirs(conversation_dir, exist_ok=True)
+    logger.info(f"Created conversation directory: {conversation_dir}")
     
     conversation_data = {
         "conversation_uid": conversation_uid,
@@ -50,7 +58,7 @@ async def create_conversation(user_uid: str, title: str, agent_uid: str) -> Dict
     }
     
     await db[CONVERSATION_COLLECTION].insert_one(conversation_data)
-    logger.info(f"Created new conversation: {title} for user {user_uid}")
+    logger.info(f"Created new conversation in database: {title} with UID: {conversation_uid}")
     
     return conversation_data
 
@@ -260,10 +268,24 @@ async def add_message(
     """Add a message to a conversation."""
     db = get_database()
     
+    # Verify the conversation exists first
+    conversation = await get_conversation(conversation_uid)
+    if not conversation:
+        logger.error(f"Conversation not found when adding message: {conversation_uid}")
+        raise ValueError(f"Conversation with UID {conversation_uid} not found")
+    
+    # Double-check we're using the correct conversation_uid from the database
+    conversation_uid = conversation["conversation_uid"]
+    logger.info(f"Verified conversation UID for message: {conversation_uid}")
+    
     if not message_uid:
         message_uid = str(uuid.uuid4())
     
     timestamp = datetime.utcnow()
+    
+    # Ensure the conversation directory exists
+    conversation_dir = os.path.join(CONVERSATION_DIR, conversation_uid)
+    os.makedirs(conversation_dir, exist_ok=True)
     
     message_data = {
         "message_uid": message_uid,
@@ -283,6 +305,7 @@ async def add_message(
     message_data = {k: v for k, v in message_data.items() if v is not None}
     
     await db[MESSAGE_COLLECTION].insert_one(message_data)
+    logger.info(f"Inserted message {message_uid} into database for conversation {conversation_uid}")
     
     await db[CONVERSATION_COLLECTION].update_one(
         {"conversation_uid": conversation_uid},
@@ -292,5 +315,5 @@ async def add_message(
         }
     )
     
-    logger.info(f"Added {message_type} message to conversation {conversation_uid}")
+    logger.info(f"Added {message_type} message {message_uid} to conversation {conversation_uid}")
     return message_data 

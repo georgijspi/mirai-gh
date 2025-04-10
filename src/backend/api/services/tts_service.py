@@ -17,14 +17,15 @@ logger = logging.getLogger(__name__)
 # Directory structure
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "..", "data")
 CONVERSATION_DIR = os.path.join(DATA_DIR, "conversation")
-LEGACY_VOICELINES_DIR = os.path.join("ttsModule", "voicelines")
-LEGACY_MESSAGES_DIR = os.path.join(LEGACY_VOICELINES_DIR, "messages")
-CLEANED_VOICE_DIR = os.path.join(LEGACY_VOICELINES_DIR, "cleaned")
+AGENT_DIR = os.path.join(DATA_DIR, "agent")
+
+# Default voice samples directory (in the repo for initial setup)
+DEFAULT_VOICE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "ttsModule", "voicelines", "cleaned")
 
 # Ensure directories exist
 os.makedirs(CONVERSATION_DIR, exist_ok=True)
-os.makedirs(LEGACY_MESSAGES_DIR, exist_ok=True)
-os.makedirs(CLEANED_VOICE_DIR, exist_ok=True)
+os.makedirs(AGENT_DIR, exist_ok=True)
+os.makedirs(DEFAULT_VOICE_DIR, exist_ok=True)
 
 def clean_text(text: str) -> str:
     """Clean text for TTS processing."""
@@ -74,7 +75,8 @@ async def generate_speech(
         filename = f"message_{message_uid}.wav"
         output_path = os.path.join(output_dir, filename)
         
-        speaker_wav_path = os.path.join(CLEANED_VOICE_DIR, "morgan_cleaned.wav")
+        # Default to morgan voice sample
+        speaker_wav_path = os.path.join(DEFAULT_VOICE_DIR, "morgan_cleaned.wav")
         
         if custom_voice_path and os.path.exists(custom_voice_path):
             speaker_wav_path = custom_voice_path
@@ -110,33 +112,45 @@ async def generate_voice(text, voice_speaker="morgan", message_uid=None, convers
     try:
         if message_uid is None:
             message_uid = str(uuid.uuid4())
+            
+        logger.info(f"Generating voice for message: {message_uid}, conversation: {conversation_uid}")
         
-        base_path = os.path.join(os.getcwd(), "..", "data")
-        
+        # Always use the data directory structure
         if conversation_uid:
-            convo_dir = os.path.join(base_path, "conversation", conversation_uid)
+            # Ensure the conversation_uid is a string
+            conversation_uid = str(conversation_uid)
+            logger.info(f"Using conversation UID: {conversation_uid}")
+            
+            convo_dir = os.path.join(CONVERSATION_DIR, conversation_uid)
             os.makedirs(convo_dir, exist_ok=True)
             file_path = os.path.join(convo_dir, f"message_{message_uid}.wav")
+            logger.info(f"Voice will be generated to: {file_path}")
         else:
-            legacy_dir = os.path.join(os.getcwd(), "ttsModule", "voicelines", "messages")
-            os.makedirs(legacy_dir, exist_ok=True)
-            file_path = os.path.join(legacy_dir, f"message_{message_uid}.wav")
+            # If no conversation_uid provided, use base conversation directory
+            os.makedirs(CONVERSATION_DIR, exist_ok=True)
+            file_path = os.path.join(CONVERSATION_DIR, f"message_{message_uid}.wav")
+            logger.warning(f"No conversation_uid provided, using base path: {file_path}")
         
-        logger.info(f"Generating voice to: {file_path}")
-        
-        speaker_wav_path = os.path.join(CLEANED_VOICE_DIR, f"{voice_speaker}_cleaned.wav")
+        # Find an appropriate voice sample
+        speaker_wav_path = os.path.join(DEFAULT_VOICE_DIR, f"{voice_speaker}_cleaned.wav")
         
         if not os.path.exists(speaker_wav_path):
-            speaker_wav_path = os.path.join(CLEANED_VOICE_DIR, f"{voice_speaker}.wav")
+            speaker_wav_path = os.path.join(DEFAULT_VOICE_DIR, f"{voice_speaker}.wav")
             
         if not os.path.exists(speaker_wav_path):
             logger.warning(f"Speaker file not found: {speaker_wav_path}, using default")
-            speaker_wav_path = os.path.join(CLEANED_VOICE_DIR, "morgan_cleaned.wav")
+            speaker_wav_path = os.path.join(DEFAULT_VOICE_DIR, "morgan_cleaned.wav")
         
+        logger.info(f"Using voice sample: {speaker_wav_path}")
         tts_generate_speech(speaker_wav_path, text, file_path)
         
+        # Verify the file was created
+        if not os.path.exists(file_path):
+            logger.error(f"Failed to generate voice file at: {file_path}")
+            raise RuntimeError(f"Voice file not created at {file_path}")
+            
         audio_duration = get_audio_duration(file_path)
-        logger.info(f"Generated voice file with duration: {audio_duration:.2f} seconds")
+        logger.info(f"Generated voice file with duration: {audio_duration:.2f} seconds at path: {file_path}")
         
         return file_path, audio_duration
     except Exception as e:
@@ -149,7 +163,7 @@ async def use_custom_voice(agent_uid, file_path=None):
         if not file_path:
             return None
             
-        agent_dir = os.path.join(os.getcwd(), "..", "data", "agent", agent_uid)
+        agent_dir = os.path.join(AGENT_DIR, agent_uid)
         os.makedirs(agent_dir, exist_ok=True)
         
         voice_filename = f"custom_voice_{uuid.uuid4()}.wav"
@@ -168,7 +182,7 @@ async def get_available_voices() -> List[Voice]:
     try:
         voices = []
         
-        for file in os.listdir(CLEANED_VOICE_DIR):
+        for file in os.listdir(DEFAULT_VOICE_DIR):
             if file.endswith("_cleaned.wav"):
                 voice_name = file.replace("_cleaned.wav", "")
                 voice = Voice(
@@ -185,15 +199,32 @@ async def get_available_voices() -> List[Voice]:
 async def get_voice_path(message_uid: str, conversation_uid: Optional[str] = None) -> Optional[str]:
     """Get the path to a voice file."""
     try:
+        logger.info(f"Looking for voice file for message: {message_uid} in conversation: {conversation_uid}")
+        
         if conversation_uid:
-            new_path = os.path.join(CONVERSATION_DIR, conversation_uid, f"message_{message_uid}.wav")
-            if os.path.exists(new_path):
-                return new_path
+            # Look in the specific conversation directory
+            path = os.path.join(CONVERSATION_DIR, conversation_uid, f"message_{message_uid}.wav")
+            if os.path.exists(path):
+                logger.info(f"Found voice file at path: {path}")
+                return path
+            else:
+                logger.warning(f"Voice file not found at expected path: {path}")
         
-        legacy_path = os.path.join(LEGACY_MESSAGES_DIR, f"message_{message_uid}.wav")
-        if os.path.exists(legacy_path):
-            return legacy_path
+        # Check base conversation directory if conversation_uid not provided or file not found
+        base_path = os.path.join(CONVERSATION_DIR, f"message_{message_uid}.wav")
+        if os.path.exists(base_path):
+            logger.info(f"Found voice file in base conversation directory: {base_path}")
+            return base_path
         
+        # Search all conversation directories as a fallback
+        for dir_name in os.listdir(CONVERSATION_DIR):
+            if os.path.isdir(os.path.join(CONVERSATION_DIR, dir_name)):
+                potential_path = os.path.join(CONVERSATION_DIR, dir_name, f"message_{message_uid}.wav")
+                if os.path.exists(potential_path):
+                    logger.info(f"Found voice file in conversation directory {dir_name}: {potential_path}")
+                    return potential_path
+        
+        logger.warning(f"Voice file not found for message: {message_uid}")
         return None
     except Exception as e:
         logger.error(f"Failed to get voice path: {e}")
