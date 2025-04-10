@@ -11,3 +11,4 @@ src/backend/.venv
 src/data/agent/*
 src/data/conversation/*
 src/backend/promptBuilderModule/__pycache__
+src/frontend/mirai-ui/node_modules
