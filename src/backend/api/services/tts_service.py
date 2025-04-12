@@ -102,9 +102,16 @@ async def load_tts_model():
         raise RuntimeError("TTS model is not loaded")
     return tts
 
-async def generate_voice(text, voice_speaker="morgan", message_uid=None, conversation_uid=None):
+async def generate_voice(text, voice_speaker="morgan", message_uid=None, conversation_uid=None, custom_voice_path=None):
     """
     Generate voice for message
+    
+    Args:
+        text: The text to convert to speech
+        voice_speaker: The speaker voice to use
+        message_uid: The unique identifier for the message
+        conversation_uid: The unique identifier for the conversation
+        custom_voice_path: Optional path to a custom voice file
     
     Returns:
         Tuple[str, float]: The path to the generated voice file and its duration in seconds
@@ -128,15 +135,20 @@ async def generate_voice(text, voice_speaker="morgan", message_uid=None, convers
             file_path = os.path.join(CONVERSATION_DIR, f"message_{message_uid}.wav")
             logger.warning(f"No conversation_uid provided, using base path: {file_path}")
         
-        # Find an appropriate voice sample
-        speaker_wav_path = os.path.join(DEFAULT_VOICE_DIR, f"{voice_speaker}_cleaned.wav")
-        
-        if not os.path.exists(speaker_wav_path):
-            speaker_wav_path = os.path.join(DEFAULT_VOICE_DIR, f"{voice_speaker}.wav")
+        # Check for custom voice path first
+        if custom_voice_path and os.path.exists(custom_voice_path):
+            logger.info(f"Using custom voice path: {custom_voice_path}")
+            speaker_wav_path = custom_voice_path
+        else:
+            # Find an appropriate voice sample from defaults
+            speaker_wav_path = os.path.join(DEFAULT_VOICE_DIR, f"{voice_speaker}_cleaned.wav")
             
-        if not os.path.exists(speaker_wav_path):
-            logger.warning(f"Speaker file not found: {speaker_wav_path}, using default")
-            speaker_wav_path = os.path.join(DEFAULT_VOICE_DIR, "morgan_cleaned.wav")
+            if not os.path.exists(speaker_wav_path):
+                speaker_wav_path = os.path.join(DEFAULT_VOICE_DIR, f"{voice_speaker}.wav")
+                
+            if not os.path.exists(speaker_wav_path):
+                logger.warning(f"Speaker file not found: {speaker_wav_path}, using default")
+                speaker_wav_path = os.path.join(DEFAULT_VOICE_DIR, "morgan_cleaned.wav")
         
         logger.info(f"Using voice sample: {speaker_wav_path}")
         tts_generate_speech(speaker_wav_path, text, file_path)
@@ -175,8 +187,13 @@ async def use_custom_voice(agent_uid, file_path=None):
         os.makedirs(agent_dir, exist_ok=True)
         logger.info(f"Ensuring agent directory exists: {agent_dir}")
         
-        voice_filename = f"custom_voice_{uuid.uuid4()}.wav"
+        voice_filename = f"custom_voice_{agent_uid}.wav"
         dest_path = os.path.join(agent_dir, voice_filename)
+        
+        # Check if file already exists and remove it to avoid errors
+        if os.path.exists(dest_path):
+            logger.info(f"Removing previous custom voice file at: {dest_path}")
+            os.remove(dest_path)
         
         shutil.copy(file_path, dest_path)
         

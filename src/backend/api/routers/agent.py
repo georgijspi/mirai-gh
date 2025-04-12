@@ -35,7 +35,7 @@ os.makedirs(CLEANED_VOICE_DIR, exist_ok=True)
 
 # Allowed file types
 ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"]
-ALLOWED_AUDIO_TYPES = ["audio/wav", "audio/x-wav"]
+ALLOWED_AUDIO_TYPES = ["audio/wav", "audio/x-wav", "audio/vnd.wave", "audio/wave"]
 
 router = APIRouter(prefix="/agent", tags=["Agent"])
 
@@ -113,20 +113,9 @@ async def upload_custom_voice(
         if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
         
-        # Check file type using both content type and file extension
-        valid_file = False
+        # Check if file is a valid WAV format
+        valid_file = (file.content_type in ALLOWED_AUDIO_TYPES) or (file.filename and file.filename.lower().endswith('.wav'))
         
-        # Define acceptable WAV content types
-        acceptable_wav_types = ["audio/wav", "audio/x-wav", "audio/vnd.wave", "audio/wave"]
-        
-        if file.content_type and file.content_type in acceptable_wav_types:
-            valid_file = True
-            logger.info(f"Valid content type detected: {file.content_type}")
-            
-        if file.filename and file.filename.lower().endswith('.wav'):
-            valid_file = True
-            logger.info(f"Valid file extension detected: {file.filename}")
-            
         if not valid_file:
             logger.error(f"Invalid file format: {file.filename}, content_type: {file.content_type}")
             raise HTTPException(status_code=400, detail="File must be a WAV audio file")

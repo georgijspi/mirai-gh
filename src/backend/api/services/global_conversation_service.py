@@ -63,10 +63,7 @@ async def get_global_conversation_with_messages(limit: int = 50, skip: int = 0) 
     ).sort("created_at", -1).skip(skip).limit(limit)
     
     messages = await cursor.to_list(length=limit)
-    
-    # Reverse the messages to show in chronological order
     messages.reverse()
-    
     global_conv["messages"] = messages
     
     return global_conv
@@ -107,7 +104,6 @@ async def add_message_to_global_conversation(
         "metadata": metadata or {}
     }
     
-    # Filter out None values
     message_data = {k: v for k, v in message_data.items() if v is not None}
     
     await db[GLOBAL_MESSAGE_COLLECTION].insert_one(message_data)

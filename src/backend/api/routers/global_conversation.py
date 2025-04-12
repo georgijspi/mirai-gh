@@ -36,7 +36,6 @@ logger = logging.getLogger(__name__)
 # Directory structure for data
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "..", "data")
 GLOBAL_CONVERSATION_DIR = os.path.join(DATA_DIR, "global_conversation")
-# Ensure directory exists
 os.makedirs(GLOBAL_CONVERSATION_DIR, exist_ok=True)
 
 router = APIRouter(prefix="/global_conversation", tags=["Global Conversation"])
@@ -56,7 +55,7 @@ def build_global_prompt(user_message: str, agent_name: str, conversation_message
     agent_config_json = json.loads(agent_config_bson)
     
     # Use the PromptBuilder to create a prompt
-    # For global conversation, we add a special context that this is a multi-agent conversation
+    # For global conversation, add special context for the multi-agent conversation
     global_context = f"""
 You are part of a multi-agent conversation where users can talk to different AI assistants by name.
 You have been specifically addressed as {agent_name}.
@@ -100,28 +99,23 @@ async def send_global_message(
 ):
     """Send a message to the global conversation."""
     try:
-        # Get user ID from current user
         user_uid = current_user.get("user_uid") if isinstance(current_user, dict) else current_user.user_uid
         
-        # Add user message to the conversation
         user_message = await add_message_to_global_conversation(
             content=message_data.content,
             message_type=MessageType.USER
         )
         
-        # Check if we need to determine the agent from the message content
         agent_uid = message_data.agent_uid
         
         if not agent_uid:
-            # Try to identify which agent the message is directed to by looking for "Hey [Name]" or similar patterns
+            # Identify which agent the message is directed to by looking for "Hey [Name]" or similar patterns
             agent_mention_pattern = r"(?:hey|hi|hello|ok|okay)\s+(\w+)"
             matches = re.findall(agent_mention_pattern, message_data.content, re.IGNORECASE)
             
             if matches:
-                # Get the first mentioned name
                 mentioned_name = matches[0].lower()
                 
-                # Get all available agents
                 agents = await get_all_agents(include_archived=False)
                 
                 # Try to find a matching agent
@@ -133,12 +127,10 @@ async def send_global_message(
                         logger.info(f"Detected agent mention: {mentioned_name}, matching to agent: {agent['name']}")
                         break
         
-        # If no agent was specified or detected, we don't process a response
         if not agent_uid:
             logger.info("No agent specified or detected in message, not generating a response")
             return user_message
         
-        # Start response time tracking
         start_time = time.time()
         
         # Process the message and generate a response in the background
@@ -172,11 +164,9 @@ async def process_agent_global_response(
             logger.error(f"Agent not found: {agent_uid}")
             return
         
-        # Get the agent's name
         agent_name = agent_config["name"]
         logger.info(f"Processing response from agent: {agent_name}")
         
-        # Get recent messages from the global conversation
         conversation = await get_global_conversation_with_messages(limit=20)
         conversation_messages = conversation.get("messages", [])
         
@@ -184,7 +174,6 @@ async def process_agent_global_response(
         conversation_messages_bson = json_util.dumps(conversation_messages)
         conversation_messages_json = json.loads(conversation_messages_bson)
         
-        # Get LLM config for the agent
         llm_config = await get_llm_config(agent_config["llm_config_uid"])
         if not llm_config:
             logger.error(f"LLM config not found for agent: {agent_config['name']}")
@@ -197,7 +186,6 @@ async def process_agent_global_response(
         llm_config_bson = json_util.dumps(llm_config)
         llm_config_json = json.loads(llm_config_bson)
         
-        # Get TTS instructions from LLM config
         tts_instructions = llm_config_json.get("tts_instructions")
         
         # Build the prompt with TTS instructions and agent name for the global conversation
@@ -218,19 +206,22 @@ async def process_agent_global_response(
         )
         logger.info(f"Generated response from {agent_name} for global conversation")
         
-        # Generate a unique ID for the message
         message_uid = str(uuid.uuid4())
+        
+        custom_voice_path = agent_config.get("custom_voice_path")
+        if custom_voice_path:
+            logger.info(f"Agent has custom voice path: {custom_voice_path}")
         
         # Generate voice for the response
         voice_path, audio_duration = await generate_voice(
             text=response_text,
             voice_speaker=agent_config["voice_speaker"],
             message_uid=message_uid,
-            conversation_uid="global"  # Use "global" as the conversation UID
+            conversation_uid="global",
+            custom_voice_path=custom_voice_path
         )
         logger.info(f"Generated voice at path: {voice_path}")
         
-        # Calculate response time
         response_time = None
         if start_time:
             response_time = time.time() - start_time
@@ -246,9 +237,8 @@ async def process_agent_global_response(
         elif "config_uid" in llm_config_json:
             llm_config_id = str(llm_config_json["config_uid"]) if isinstance(llm_config_json["config_uid"], (ObjectId, str)) else llm_config_json["config_uid"]
         
-        # Add response time and audio duration as metadata
         metadata = {
-            "agent_name": agent_name  # Include the agent's name in metadata
+            "agent_name": agent_name
         }
         
         if response_time:
