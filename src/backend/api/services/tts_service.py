@@ -115,9 +115,7 @@ async def generate_voice(text, voice_speaker="morgan", message_uid=None, convers
             
         logger.info(f"Generating voice for message: {message_uid}, conversation: {conversation_uid}")
         
-        # Always use the data directory structure
         if conversation_uid:
-            # Ensure the conversation_uid is a string
             conversation_uid = str(conversation_uid)
             logger.info(f"Using conversation UID: {conversation_uid}")
             
@@ -126,7 +124,6 @@ async def generate_voice(text, voice_speaker="morgan", message_uid=None, convers
             file_path = os.path.join(convo_dir, f"message_{message_uid}.wav")
             logger.info(f"Voice will be generated to: {file_path}")
         else:
-            # If no conversation_uid provided, use base conversation directory
             os.makedirs(CONVERSATION_DIR, exist_ok=True)
             file_path = os.path.join(CONVERSATION_DIR, f"message_{message_uid}.wav")
             logger.warning(f"No conversation_uid provided, using base path: {file_path}")
@@ -144,7 +141,6 @@ async def generate_voice(text, voice_speaker="morgan", message_uid=None, convers
         logger.info(f"Using voice sample: {speaker_wav_path}")
         tts_generate_speech(speaker_wav_path, text, file_path)
         
-        # Verify the file was created
         if not os.path.exists(file_path):
             logger.error(f"Failed to generate voice file at: {file_path}")
             raise RuntimeError(f"Voice file not created at {file_path}")
@@ -161,20 +157,45 @@ async def use_custom_voice(agent_uid, file_path=None):
     """Store a custom voice file for an agent"""
     try:
         if not file_path:
+            logger.error("No file path provided for custom voice")
+            return None
+            
+        if not os.path.exists(file_path):
+            logger.error(f"Custom voice file does not exist at path: {file_path}")
+            return None
+            
+        file_size = os.path.getsize(file_path)
+        logger.info(f"Custom voice file size: {file_size} bytes")
+        
+        if file_size == 0:
+            logger.error("Custom voice file is empty")
             return None
             
         agent_dir = os.path.join(AGENT_DIR, agent_uid)
         os.makedirs(agent_dir, exist_ok=True)
+        logger.info(f"Ensuring agent directory exists: {agent_dir}")
         
         voice_filename = f"custom_voice_{uuid.uuid4()}.wav"
         dest_path = os.path.join(agent_dir, voice_filename)
         
         shutil.copy(file_path, dest_path)
-        logger.info(f"Custom voice file copied to: {dest_path}")
+        
+        # Verify the copy was successful
+        if os.path.exists(dest_path):
+            copied_size = os.path.getsize(dest_path)
+            logger.info(f"Custom voice file copied to: {dest_path}, size: {copied_size} bytes")
+            
+            if copied_size != file_size:
+                logger.warning(f"File size mismatch after copy: original {file_size} vs copied {copied_size}")
+        else:
+            logger.error(f"Failed to copy file to {dest_path}")
+            return None
         
         return dest_path
     except Exception as e:
         logger.error(f"Error processing custom voice: {str(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return None
 
 async def get_available_voices() -> List[Voice]:
@@ -202,7 +223,6 @@ async def get_voice_path(message_uid: str, conversation_uid: Optional[str] = Non
         logger.info(f"Looking for voice file for message: {message_uid} in conversation: {conversation_uid}")
         
         if conversation_uid:
-            # Look in the specific conversation directory
             path = os.path.join(CONVERSATION_DIR, conversation_uid, f"message_{message_uid}.wav")
             if os.path.exists(path):
                 logger.info(f"Found voice file at path: {path}")
@@ -210,7 +230,6 @@ async def get_voice_path(message_uid: str, conversation_uid: Optional[str] = Non
             else:
                 logger.warning(f"Voice file not found at expected path: {path}")
         
-        # Check base conversation directory if conversation_uid not provided or file not found
         base_path = os.path.join(CONVERSATION_DIR, f"message_{message_uid}.wav")
         if os.path.exists(base_path):
             logger.info(f"Found voice file in base conversation directory: {base_path}")

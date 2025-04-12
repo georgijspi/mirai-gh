@@ -3,7 +3,7 @@ import uvicorn
 import logging
 import os
 
-from api.routers import tts, auth, llm, agent, conversation, statistics
+from api.routers import tts, auth, llm, agent, conversation, statistics, global_conversation
 from ttsModule.ttsModule import tts as tts_model
 from api.database import connect_to_mongodb, close_mongodb_connection
 
@@ -61,6 +61,7 @@ api_router.include_router(llm.router)
 api_router.include_router(agent.router)
 api_router.include_router(conversation.router)
 api_router.include_router(statistics.router)
+api_router.include_router(global_conversation.router)
 logger.info("Included all routers under /mirai/api")
 
 app.include_router(api_router)

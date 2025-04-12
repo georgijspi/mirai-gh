@@ -76,17 +76,23 @@ async def create_new_conversation(
     conv_data: ConversationCreate,
     current_user: dict = Depends(get_current_user)
 ):
-    """Create a new conversation."""
+    """Create a new conversation with optional title. If no title is provided, one will be auto-generated based on agent name and current date."""
     try:
         # Get user ID from current user
         user_uid = current_user.get("user_uid") if isinstance(current_user, dict) else current_user.user_uid
         
+        # Get the agent_uid from request
+        agent_uid = conv_data.agent_uid
+        
+        # Pass title to create_conversation (which now handles None values)
+        title = conv_data.title if hasattr(conv_data, 'title') and conv_data.title else None
+        
         conversation = await create_conversation(
             user_uid=user_uid,
-            title=conv_data.title,
-            agent_uid=conv_data.agent_uid
+            title=title,
+            agent_uid=agent_uid
         )
-        logger.info(f"Conversation created: {conv_data.title}")
+        logger.info(f"Conversation created: {conversation['title']}")
         return conversation
     except ValueError as e:
         logger.error(f"Error creating conversation: {str(e)}")

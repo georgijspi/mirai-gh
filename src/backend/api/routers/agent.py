@@ -76,29 +76,23 @@ async def upload_profile_picture(
 ):
     """Upload a profile picture for an agent"""
     try:
-        # Verify agent exists
         agent = await get_agent(agent_uid)
         if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
         
-        # Check file type
         if not file.content_type.startswith("image/"):
             raise HTTPException(status_code=400, detail="File must be an image")
         
-        # Create directory if it doesn't exist
         agent_dir = os.path.join(AGENT_DIR, agent_uid)
         os.makedirs(agent_dir, exist_ok=True)
         
-        # Generate filename with original extension
         file_ext = os.path.splitext(file.filename)[1]
         profile_filename = f"profile_{uuid.uuid4()}{file_ext}"
         
-        # Save file
         file_path = os.path.join(agent_dir, profile_filename)
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
-        # Update agent with profile picture path
         relative_path = os.path.join("..", "data", "agent", agent_uid, profile_filename)
         update_data = AgentUpdate(profile_picture_path=relative_path)
         updated_agent = await update_agent(agent_uid, update_data)
@@ -115,36 +109,50 @@ async def upload_custom_voice(
 ):
     """Upload a custom voice file for an agent"""
     try:
-        # Verify agent exists
         agent = await get_agent(agent_uid)
         if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
         
-        # Check file type
-        if not file.content_type == "audio/wav":
+        # Check file type using both content type and file extension
+        valid_file = False
+        
+        # Define acceptable WAV content types
+        acceptable_wav_types = ["audio/wav", "audio/x-wav", "audio/vnd.wave", "audio/wave"]
+        
+        if file.content_type and file.content_type in acceptable_wav_types:
+            valid_file = True
+            logger.info(f"Valid content type detected: {file.content_type}")
+            
+        if file.filename and file.filename.lower().endswith('.wav'):
+            valid_file = True
+            logger.info(f"Valid file extension detected: {file.filename}")
+            
+        if not valid_file:
+            logger.error(f"Invalid file format: {file.filename}, content_type: {file.content_type}")
             raise HTTPException(status_code=400, detail="File must be a WAV audio file")
         
-        # Create temp file
         temp_file = os.path.join(os.getcwd(), f"temp_{uuid.uuid4()}.wav")
         with open(temp_file, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
-        # Process the voice file
+        file_size = os.path.getsize(temp_file)
+        logger.info(f"Temporary file created: {temp_file}, size: {file_size} bytes")
+        
         voice_path = await use_custom_voice(agent_uid, temp_file)
         
-        # Clean up temp file
         os.remove(temp_file)
         
         if not voice_path:
             raise HTTPException(status_code=500, detail="Failed to process voice file")
         
-        # Update agent with custom voice path
         update_data = AgentUpdate(custom_voice_path=voice_path)
         updated_agent = await update_agent(agent_uid, update_data)
         
+        logger.info(f"Custom voice successfully uploaded for agent {agent_uid}: {voice_path}")
         return {"custom_voice_path": voice_path}
     
     except Exception as e:
+        logger.error(f"Failed to upload custom voice: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to upload custom voice: {str(e)}")
 
 @router.get("/list", response_model=AgentListResponse)

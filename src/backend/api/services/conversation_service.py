@@ -25,7 +25,7 @@ os.makedirs(CONVERSATION_DIR, exist_ok=True)
 # Voiceline storage paths
 VOICELINE_DIR = os.path.join("ttsModule", "voicelines", "messages")
 
-async def create_conversation(user_uid: str, title: str, agent_uid: str) -> Dict[str, Any]:
+async def create_conversation(user_uid: str, title: str = None, agent_uid: str = None) -> Dict[str, Any]:
     """Create a new conversation."""
     db = get_database()
     
@@ -34,6 +34,13 @@ async def create_conversation(user_uid: str, title: str, agent_uid: str) -> Dict
     if not agent:
         logger.error(f"Failed to create conversation: Agent {agent_uid} not found")
         raise ValueError(f"Agent with ID {agent_uid} not found")
+    
+    # Auto-generate title if not provided
+    if title is None or title.strip() == "":
+        # Format the date as YYYY-MM-DD
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        title = f"Conversation with {agent['name']} on {today}"
+        logger.info(f"Auto-generated conversation title: {title}")
     
     # Generate a unique ID for the conversation
     conversation_uid = str(uuid.uuid4())
