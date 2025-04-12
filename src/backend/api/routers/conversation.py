@@ -76,17 +76,23 @@ async def create_new_conversation(
     conv_data: ConversationCreate,
     current_user: dict = Depends(get_current_user)
 ):
-    """Create a new conversation."""
+    """Create a new conversation with optional title. If no title is provided, one will be auto-generated based on agent name and current date."""
     try:
         # Get user ID from current user
         user_uid = current_user.get("user_uid") if isinstance(current_user, dict) else current_user.user_uid
         
+        # Get the agent_uid from request
+        agent_uid = conv_data.agent_uid
+        
+        # Pass title to create_conversation (which now handles None values)
+        title = conv_data.title if hasattr(conv_data, 'title') and conv_data.title else None
+        
         conversation = await create_conversation(
             user_uid=user_uid,
-            title=conv_data.title,
-            agent_uid=conv_data.agent_uid
+            title=title,
+            agent_uid=agent_uid
         )
-        logger.info(f"Conversation created: {conv_data.title}")
+        logger.info(f"Conversation created: {conversation['title']}")
         return conversation
     except ValueError as e:
         logger.error(f"Error creating conversation: {str(e)}")
@@ -249,6 +255,9 @@ async def send_message(
         # Get user ID from current user
         user_uid = current_user.get("user_uid") if isinstance(current_user, dict) else current_user.user_uid
         
+        # Log the incoming request with conversation_uid
+        logger.info(f"Received message request for conversation: {message_data.conversation_uid}")
+        
         # Validate conversation
         conversation = await get_conversation(message_data.conversation_uid)
         if not conversation:
@@ -257,6 +266,9 @@ async def send_message(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Conversation not found"
             )
+        
+        # Log the actual conversation data from DB to confirm conversation_uid
+        logger.info(f"Found conversation in DB with uid: {conversation.get('conversation_uid')}")
         
         # Check if the conversation belongs to the current user
         if conversation["user_uid"] != user_uid:
@@ -287,27 +299,32 @@ async def send_message(
         # Start response time tracking
         start_time = time.time()
         
+        # Make sure to use the conversation_uid from database to ensure consistency
+        conversation_uid = conversation["conversation_uid"]
+        
         # Add user message to the conversation
+        logger.info(f"Adding user message to conversation: {conversation_uid}")
         user_message = await add_message(
-            conversation_uid=message_data.conversation_uid,
+            conversation_uid=conversation_uid,
             content=message_data.content,
             message_type=MessageType.USER
         )
         
         # Get conversation history
-        conversation_messages = await get_conversation_messages(message_data.conversation_uid)
+        conversation_messages = await get_conversation_messages(conversation_uid)
         
         # Process the message and generate a response
         # Use a background task for the agent response to avoid blocking
+        logger.info(f"Starting background task for conversation: {conversation_uid}")
         background_tasks.add_task(
             process_agent_response,
-            conversation_uid=message_data.conversation_uid,
+            conversation_uid=conversation_uid,
             user_message=user_message["content"],
             conversation_messages=conversation_messages,
             start_time=start_time
         )
         
-        logger.info(f"User message sent and agent response processing started for conversation: {message_data.conversation_uid}")
+        logger.info(f"User message sent and agent response processing started for conversation: {conversation_uid}")
         return user_message
     except HTTPException:
         raise
@@ -326,9 +343,13 @@ async def process_agent_response(
 ):
     """Process an agent response to a user message."""
     try:
+        # Log conversation UID to help debug issues
+        logger.info(f"Processing agent response for conversation: {conversation_uid}")
+        
         # Get conversation history
         conversation = await get_conversation(conversation_uid)
         agent_uid = conversation.get("agent_uid")
+        logger.info(f"Retrieved conversation data with agent_uid: {agent_uid}")
         
         # Get conversation messages if not provided
         if conversation_messages is None:
@@ -378,14 +399,17 @@ async def process_agent_response(
         # Generate a unique ID for the message
         message_uid = str(uuid.uuid4())
         
+        # Log before calling generate_voice to confirm the conversation_uid
+        logger.info(f"Generating voice for message_uid: {message_uid} in conversation: {conversation_uid}")
+        
         # Generate voice for the response
-        voice_path = await generate_voice(
+        voice_path, audio_duration = await generate_voice(
             text=response_text,
             voice_speaker=agent_config["voice_speaker"],
             message_uid=message_uid,
             conversation_uid=conversation_uid
         )
-        logger.info(f"Generated voice for message: {message_uid}")
+        logger.info(f"Generated voice at path: {voice_path}")
         
         # Calculate response time - MOVED HERE to include TTS generation time
         response_time = None
@@ -403,10 +427,15 @@ async def process_agent_response(
         elif "config_uid" in llm_config_json:
             llm_config_id = str(llm_config_json["config_uid"]) if isinstance(llm_config_json["config_uid"], (ObjectId, str)) else llm_config_json["config_uid"]
         
-        # Add response time as metadata if available
+        # Add response time and audio duration as metadata
         metadata = {}
         if response_time:
             metadata["response_time"] = f"{response_time:.2f}"
+        if audio_duration:
+            metadata["audio_duration"] = f"{audio_duration:.2f}"
+        
+        # Log before adding message to confirm consistency
+        logger.info(f"Adding agent message to conversation: {conversation_uid}, message_uid: {message_uid}")
         
         # Add agent message to the conversation
         await add_message(
@@ -423,33 +452,7 @@ async def process_agent_response(
         logger.info(f"Agent response added to conversation: {conversation_uid}")
     except Exception as e:
         logger.error(f"Error processing agent response: {str(e)}")
-        # Add an error message to the conversation
-        try:
-            # Make sure agent_uid is a string
-            agent_id = str(agent_uid) if isinstance(agent_uid, ObjectId) else agent_uid
-            
-            # Get a safe default for llm_config_uid if not available
-            llm_config_id = None
-            if 'llm_config_json' in locals() and llm_config_json:
-                if "llm_config_uid" in llm_config_json:
-                    llm_config_id = str(llm_config_json["llm_config_uid"]) if isinstance(llm_config_json["llm_config_uid"], (ObjectId, str)) else llm_config_json["llm_config_uid"]
-                elif "config_uid" in llm_config_json:
-                    llm_config_id = str(llm_config_json["config_uid"]) if isinstance(llm_config_json["config_uid"], (ObjectId, str)) else llm_config_json["config_uid"]
-            elif 'llm_config' in locals() and llm_config:
-                if "llm_config_uid" in llm_config:
-                    llm_config_id = str(llm_config["llm_config_uid"]) if isinstance(llm_config["llm_config_uid"], ObjectId) else llm_config["llm_config_uid"]
-                elif "config_uid" in llm_config:
-                    llm_config_id = str(llm_config["config_uid"]) if isinstance(llm_config["config_uid"], ObjectId) else llm_config["config_uid"]
-            
-            await add_message(
-                conversation_uid=conversation_uid,
-                content=f"I'm sorry, I encountered an error while processing your request: {str(e)}",
-                message_type=MessageType.AGENT,
-                agent_uid=agent_id,
-                llm_config_uid=llm_config_id
-            )
-        except Exception as inner_e:
-            logger.error(f"Failed to add error message to conversation: {str(inner_e)}")
+        raise
 
 @router.post("/rate_message", response_model=MessageResponse)
 async def rate_message(

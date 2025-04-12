@@ -25,7 +25,7 @@ os.makedirs(CONVERSATION_DIR, exist_ok=True)
 # Voiceline storage paths
 VOICELINE_DIR = os.path.join("ttsModule", "voicelines", "messages")
 
-async def create_conversation(user_uid: str, title: str, agent_uid: str) -> Dict[str, Any]:
+async def create_conversation(user_uid: str, title: str = None, agent_uid: str = None) -> Dict[str, Any]:
     """Create a new conversation."""
     db = get_database()
     
@@ -35,8 +35,23 @@ async def create_conversation(user_uid: str, title: str, agent_uid: str) -> Dict
         logger.error(f"Failed to create conversation: Agent {agent_uid} not found")
         raise ValueError(f"Agent with ID {agent_uid} not found")
     
+    # Auto-generate title if not provided
+    if title is None or title.strip() == "":
+        # Format the date as YYYY-MM-DD
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        title = f"Conversation with {agent['name']} on {today}"
+        logger.info(f"Auto-generated conversation title: {title}")
+    
+    # Generate a unique ID for the conversation
     conversation_uid = str(uuid.uuid4())
+    logger.info(f"Generated new conversation_uid: {conversation_uid}")
+    
     timestamp = datetime.utcnow()
+    
+    # Create conversation directory
+    conversation_dir = os.path.join(CONVERSATION_DIR, conversation_uid)
+    os.makedirs(conversation_dir, exist_ok=True)
+    logger.info(f"Created conversation directory: {conversation_dir}")
     
     conversation_data = {
         "conversation_uid": conversation_uid,
@@ -50,7 +65,7 @@ async def create_conversation(user_uid: str, title: str, agent_uid: str) -> Dict
     }
     
     await db[CONVERSATION_COLLECTION].insert_one(conversation_data)
-    logger.info(f"Created new conversation: {title} for user {user_uid}")
+    logger.info(f"Created new conversation in database: {title} with UID: {conversation_uid}")
     
     return conversation_data
 
@@ -64,12 +79,10 @@ async def get_conversation_with_messages(conversation_uid: str) -> Optional[Dict
     """Get conversation with all messages."""
     db = get_database()
     
-    # Get conversation
     conversation = await get_conversation(conversation_uid)
     if not conversation:
         return None
     
-    # Get messages
     cursor = db[MESSAGE_COLLECTION].find(
         {"conversation_uid": conversation_uid}
     ).sort("created_at", 1)
@@ -96,10 +109,8 @@ async def update_conversation(conversation_uid: str, update_data: Dict[str, Any]
     """Update conversation."""
     db = get_database()
     
-    # Add updated timestamp
     update_data["updated_at"] = datetime.utcnow()
     
-    # Perform update
     result = await db[CONVERSATION_COLLECTION].update_one(
         {"conversation_uid": conversation_uid},
         {"$set": update_data}
@@ -109,7 +120,6 @@ async def update_conversation(conversation_uid: str, update_data: Dict[str, Any]
         logger.warning(f"No conversation updated with ID: {conversation_uid}")
         return None
     
-    # Get updated conversation
     updated_conversation = await get_conversation(conversation_uid)
     logger.info(f"Updated conversation: {updated_conversation['title']}")
     
@@ -142,17 +152,14 @@ async def add_message_to_conversation(
     """
     db = get_database()
     
-    # Verify the conversation exists
     conversation = await get_conversation(conversation_uid)
     if not conversation:
         logger.error(f"Failed to add message: Conversation {conversation_uid} not found")
         return None
     
-    # Create a message UID
     message_uid = str(uuid.uuid4())
     timestamp = datetime.utcnow()
     
-    # Prepare the message document
     message = {
         "message_uid": message_uid,
         "conversation_uid": conversation_uid,
@@ -163,10 +170,8 @@ async def add_message_to_conversation(
         "updated_at": timestamp
     }
     
-    # Save the message
     await db[MESSAGE_COLLECTION].insert_one(message)
     
-    # Update the conversation's last_message timestamp
     await db[CONVERSATION_COLLECTION].update_one(
         {"conversation_uid": conversation_uid},
         {"$set": {"updated_at": timestamp, "last_message": timestamp}}
@@ -174,13 +179,11 @@ async def add_message_to_conversation(
     
     # If this is a user message, generate a response
     if is_user:
-        # Get the agent info
         agent = await get_agent(conversation["agent_uid"])
         if not agent:
             logger.error(f"Failed to generate response: Agent {conversation['agent_uid']} not found")
             return message
         
-        # Generate the agent's response
         response_content = await generate_text(
             conversation_uid=conversation_uid,
             agent=agent,
@@ -188,22 +191,18 @@ async def add_message_to_conversation(
         )
         
         if response_content:
-            # Create a directory for this conversation's messages if it doesn't exist
             conversation_dir = os.path.join(CONVERSATION_DIR, conversation_uid)
             os.makedirs(conversation_dir, exist_ok=True)
             
-            # Add the agent's response
             response_message = await add_message_to_conversation(
                 conversation_uid=conversation_uid,
                 content=response_content,
                 is_user=False
             )
             
-            # Generate speech for the response
             if response_message:
                 voice_path = None
                 
-                # Check if the agent has a custom voice
                 if agent.get("custom_voice_path") and os.path.exists(agent["custom_voice_path"]):
                     voice_path = await generate_speech(
                         message_uid=response_message["message_uid"],
@@ -219,7 +218,6 @@ async def add_message_to_conversation(
                     )
                 
                 if voice_path:
-                    # Update the message with the voice path
                     await db[MESSAGE_COLLECTION].update_one(
                         {"message_uid": response_message["message_uid"]},
                         {"$set": {"voice_path": voice_path}}
@@ -249,7 +247,6 @@ async def update_message_rating(message_uid: str, rating: MessageRating) -> Opti
         logger.warning(f"No message updated with ID: {message_uid}")
         return None
     
-    # Get updated message
     updated_message = await get_message(message_uid)
     logger.info(f"Updated rating for message: {message_uid} to {rating}")
     
@@ -278,14 +275,25 @@ async def add_message(
     """Add a message to a conversation."""
     db = get_database()
     
-    # Create message UID if not provided
+    # Verify the conversation exists first
+    conversation = await get_conversation(conversation_uid)
+    if not conversation:
+        logger.error(f"Conversation not found when adding message: {conversation_uid}")
+        raise ValueError(f"Conversation with UID {conversation_uid} not found")
+    
+    # Double-check we're using the correct conversation_uid from the database
+    conversation_uid = conversation["conversation_uid"]
+    logger.info(f"Verified conversation UID for message: {conversation_uid}")
+    
     if not message_uid:
         message_uid = str(uuid.uuid4())
     
-    # Get timestamp
     timestamp = datetime.utcnow()
     
-    # Prepare message data
+    # Ensure the conversation directory exists
+    conversation_dir = os.path.join(CONVERSATION_DIR, conversation_uid)
+    os.makedirs(conversation_dir, exist_ok=True)
+    
     message_data = {
         "message_uid": message_uid,
         "conversation_uid": conversation_uid,
@@ -301,13 +309,11 @@ async def add_message(
         "metadata": metadata or {}
     }
     
-    # Remove None values
     message_data = {k: v for k, v in message_data.items() if v is not None}
     
-    # Insert message
     await db[MESSAGE_COLLECTION].insert_one(message_data)
+    logger.info(f"Inserted message {message_uid} into database for conversation {conversation_uid}")
     
-    # Update conversation last activity
     await db[CONVERSATION_COLLECTION].update_one(
         {"conversation_uid": conversation_uid},
         {
@@ -316,5 +322,5 @@ async def add_message(
         }
     )
     
-    logger.info(f"Added {message_type} message to conversation {conversation_uid}")
+    logger.info(f"Added {message_type} message {message_uid} to conversation {conversation_uid}")
     return message_data 

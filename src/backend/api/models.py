@@ -1,9 +1,11 @@
 # api/models.py
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from enum import Enum
 from datetime import datetime
 import uuid
+import logging
+import os
 
 # --- TTS Models ---
 
@@ -229,7 +231,7 @@ class ConversationBase(BaseModel):
 
 class ConversationCreate(BaseModel):
     """Model for creating a new conversation."""
-    title: str
+    title: Optional[str] = None
     agent_uid: str
 
 class ConversationUpdate(BaseModel):
@@ -259,5 +261,29 @@ class SendMessageRequest(BaseModel):
 
 class RateMessageRequest(BaseModel):
     """Model for rating a message."""
+    message_uid: str
+    rating: MessageRating
+
+# Global Conversation Models
+class GlobalSendMessageRequest(BaseModel):
+    """Model for sending a message in the global conversation."""
+    content: str
+    agent_uid: Optional[str] = None  # Optional: If provided, this agent will respond
+
+class GlobalMessageResponse(MessageResponse):
+    """Response model for messages in global conversation."""
+    # Inherits all fields from MessageResponse
+    pass
+
+class GlobalConversationResponse(BaseModel):
+    """Response model for global conversation."""
+    conversation_uid: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    message_count: int = 0
+    messages: List[GlobalMessageResponse] = []
+
+class GlobalMessageRateRequest(BaseModel):
+    """Model for rating a message in the global conversation."""
     message_uid: str
     rating: MessageRating
