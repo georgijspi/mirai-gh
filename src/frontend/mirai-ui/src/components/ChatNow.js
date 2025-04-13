@@ -1,6 +1,7 @@
 import React, { useState } from "react";
+import SpeechToText from "./Stt";
 
-const ChatNow = () => {
+const ChatNow = ({ config }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
 
@@ -9,6 +10,7 @@ const ChatNow = () => {
 
     const userMessage = { text: input, sender: "user" };
     setMessages((prev) => [...prev, userMessage]);
+    setInput("");
 
     setTimeout(() => {
       const botResponse = {
@@ -17,13 +19,16 @@ const ChatNow = () => {
       };
       setMessages((prev) => [...prev, botResponse]);
     }, 500);
-
-    setInput("");
   };
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
       handleSend();
+    }
+  };
+
+  const handleTranscription = (transcription) => {
+    if (transcription) {
     }
   };
 
@@ -81,6 +86,9 @@ const ChatNow = () => {
           >
             Send
           </button>
+        </div>
+        <div className="mt-4">
+          <SpeechToText onTranscription={handleTranscription} />
         </div>
       </div>
     </div>
