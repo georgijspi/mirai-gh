@@ -12,3 +12,6 @@ src/data/agent/*
 src/data/conversation/*
 src/backend/promptBuilderModule/__pycache__
 src/frontend/mirai-ui/node_modules
+src/frontend/mirai-ui/package-lock.json
+src/frontend/mirai-ui/package-lock.json
+src/frontend/mirai-ui/public/model/*
