@@ -18,11 +18,12 @@ export default function SpeechToText({ onTranscription }) {
   const leopardModel = {
     publicPath: "/model/leopard_params.pv",
   };
-  const accessKey = "htYQGBJfO5TGG+9srWAQkzaA/5ld1v31RVwHynOHMvZb0Q//ZL2z7g==";
+  const accessKey =  "AccessKey"; // Replace with your actual access key
 
   const initEngine = async () => {
     try {
       await init(accessKey, leopardModel);
+      console.log("Leopard initialized successfully");
     } catch (e) {
       console.error("Error initializing Leopard:", e);
     }
