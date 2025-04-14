@@ -221,6 +221,7 @@ class MessageResponse(MessageBase):
     agent_uid: Optional[str] = None
     llm_config_uid: Optional[str] = None
     created_at: datetime
+    audio_stream_url: Optional[str] = None
 
 class ConversationBase(BaseModel):
     """Base model for conversation."""
@@ -271,7 +272,7 @@ class GlobalSendMessageRequest(BaseModel):
     agent_uid: Optional[str] = None  # Optional: If provided, this agent will respond
 
 class GlobalMessageResponse(MessageResponse):
-    """Response model for messages in global conversation."""
+    """Response model for global message."""
     # Inherits all fields from MessageResponse
     pass
 

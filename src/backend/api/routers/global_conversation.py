@@ -30,6 +30,7 @@ from ..services.agent_service import get_agent, get_all_agents
 from ..services.llm_service import get_llm_config, generate_text
 from ..services.tts_service import generate_voice
 from promptBuilderModule.prompt_builder import PromptBuilder
+from ..database import db, pubsub_client
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,9 @@ logger = logging.getLogger(__name__)
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "..", "data")
 GLOBAL_CONVERSATION_DIR = os.path.join(DATA_DIR, "global_conversation")
 os.makedirs(GLOBAL_CONVERSATION_DIR, exist_ok=True)
+
+# Collection name for global messages
+GLOBAL_MESSAGE_COLLECTION = "global_messages"
 
 router = APIRouter(prefix="/global_conversation", tags=["Global Conversation"])
 
@@ -90,6 +94,12 @@ async def get_global_conversation(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve global conversation: {str(e)}"
         )
+
+# Add OPTIONS handler for CORS preflight requests
+@router.options("", include_in_schema=False)
+async def options_global_conversation():
+    """Handle CORS preflight requests for the global conversation endpoint."""
+    return {}
 
 @router.post("/send_message", response_model=GlobalMessageResponse)
 async def send_global_message(
@@ -150,6 +160,12 @@ async def send_global_message(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to send message: {str(e)}"
         )
+
+# Add OPTIONS handler for CORS preflight requests
+@router.options("/send_message", include_in_schema=False)
+async def options_send_message():
+    """Handle CORS preflight requests for the send_message endpoint."""
+    return {}
 
 async def process_agent_global_response(
     user_message: str,
@@ -237,6 +253,10 @@ async def process_agent_global_response(
         elif "config_uid" in llm_config_json:
             llm_config_id = str(llm_config_json["config_uid"]) if isinstance(llm_config_json["config_uid"], (ObjectId, str)) else llm_config_json["config_uid"]
         
+        # Generate a stream URL for the audio
+        audio_stream_url = f"/mirai/api/tts/stream/{message_uid}?conversation_uid=global"
+        
+        # Add response time and audio duration as metadata
         metadata = {
             "agent_name": agent_name
         }
@@ -247,7 +267,7 @@ async def process_agent_global_response(
             metadata["audio_duration"] = f"{audio_duration:.2f}"
         
         # Add agent message to the global conversation
-        await add_message_to_global_conversation(
+        agent_message = await add_message_to_global_conversation(
             content=response_text,
             message_type=MessageType.AGENT,
             message_uid=message_uid,
@@ -257,7 +277,54 @@ async def process_agent_global_response(
             metadata=metadata
         )
         
+        # Add the stream URL to the response
+        agent_message["audio_stream_url"] = audio_stream_url
+        
+        # Update the message in the database with the audio_stream_url
+        if db is not None:
+            try:
+                await db[GLOBAL_MESSAGE_COLLECTION].update_one(
+                    {"message_uid": message_uid},
+                    {"$set": {"audio_stream_url": audio_stream_url}}
+                )
+                logger.info(f"Updated message {message_uid} with audio_stream_url in database")
+            except Exception as e:
+                logger.error(f"Failed to update message in database: {e}")
+                # Continue execution - this is not critical
+        else:
+            logger.warning(f"Database connection not available, couldn't update message {message_uid} with audio_stream_url")
+        
+        # Publish the agent's message to a message queue for websocket notifications
+        if pubsub_client:
+            try:
+                # Create a simplified version of the message that's guaranteed to be JSON serializable
+                serializable_message = {
+                    "type": "agent_response",
+                    "message": {
+                        "message_uid": message_uid,
+                        "content": response_text,
+                        "message_type": "agent",
+                        "audio_stream_url": audio_stream_url,
+                        "metadata": metadata,
+                        "conversation_uid": "global",
+                        "agent_uid": agent_id
+                    },
+                    "conversation_uid": "global"
+                }
+                
+                await pubsub_client.publish(
+                    "global_conversation:messages",
+                    json.dumps(serializable_message, cls=JSONEncoder)
+                )
+                logger.info(f"Published global agent response from {agent_name}")
+            except Exception as e:
+                logger.error(f"Failed to publish global agent response: {str(e)}")
+                import traceback
+                logger.error(f"Publish error traceback: {traceback.format_exc()}")
+        
         logger.info(f"Agent {agent_name} response added to global conversation")
+        
+        return agent_message
     except Exception as e:
         logger.error(f"Error processing agent response for global conversation: {str(e)}")
         import traceback

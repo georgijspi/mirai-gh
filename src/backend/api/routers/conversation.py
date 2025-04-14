@@ -6,7 +6,7 @@ import time
 from typing import List, Dict, Any, Optional
 from bson import ObjectId, json_util
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi.responses import JSONResponse
 
 from ..models import (
@@ -38,6 +38,7 @@ from ..services.agent_service import get_agent
 from ..services.llm_service import get_llm_config, generate_text
 from ..services.tts_service import generate_voice
 from promptBuilderModule.prompt_builder import PromptBuilder
+from ..database import db, pubsub_client
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,9 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.
 CONVERSATION_DIR = os.path.join(DATA_DIR, "conversation")
 # Ensure directory exists
 os.makedirs(CONVERSATION_DIR, exist_ok=True)
+
+# Collection name for messages
+MESSAGE_COLLECTION = "messages"
 
 router = APIRouter(prefix="/conversation", tags=["Conversation"])
 
@@ -417,39 +421,77 @@ async def process_agent_response(
             response_time = time.time() - start_time
             logger.info(f"Total response time (including TTS): {response_time:.2f} seconds")
         
-        # Convert BSON ObjectId to string for agent_uid and llm_config_uid
-        agent_id = str(agent_uid) if isinstance(agent_uid, ObjectId) else agent_uid
+        # Generate a stream URL for the audio
+        audio_stream_url = f"/mirai/api/tts/stream/{message_uid}?conversation_uid={conversation_uid}"
         
-        # Handle llm_config_uid properly - extract from the serialized JSON data
-        llm_config_id = None
-        if "llm_config_uid" in llm_config_json:
-            llm_config_id = str(llm_config_json["llm_config_uid"]) if isinstance(llm_config_json["llm_config_uid"], (ObjectId, str)) else llm_config_json["llm_config_uid"]
-        elif "config_uid" in llm_config_json:
-            llm_config_id = str(llm_config_json["config_uid"]) if isinstance(llm_config_json["config_uid"], (ObjectId, str)) else llm_config_json["config_uid"]
-        
-        # Add response time and audio duration as metadata
+        # Add metadata
         metadata = {}
         if response_time:
             metadata["response_time"] = f"{response_time:.2f}"
         if audio_duration:
             metadata["audio_duration"] = f"{audio_duration:.2f}"
         
-        # Log before adding message to confirm consistency
-        logger.info(f"Adding agent message to conversation: {conversation_uid}, message_uid: {message_uid}")
-        
-        # Add agent message to the conversation
-        await add_message(
+        # Add the agent response to the conversation
+        agent_message = await add_message(
             conversation_uid=conversation_uid,
             content=response_text,
             message_type=MessageType.AGENT,
             message_uid=message_uid,
+            agent_uid=agent_uid,
+            llm_config_uid=agent_config["llm_config_uid"],
             voiceline_path=voice_path,
-            agent_uid=agent_id,
-            llm_config_uid=llm_config_id,
             metadata=metadata
         )
         
+        # Add the stream URL to the response
+        agent_message["audio_stream_url"] = audio_stream_url
+        
+        # Update the message in the database with the audio_stream_url
+        if db is not None:
+            try:
+                await db[MESSAGE_COLLECTION].update_one(
+                    {"message_uid": message_uid},
+                    {"$set": {"audio_stream_url": audio_stream_url}}
+                )
+                logger.info(f"Updated message {message_uid} with audio_stream_url in database")
+            except Exception as e:
+                logger.error(f"Failed to update message in database: {e}")
+                # Continue execution - this is not critical
+        else:
+            logger.warning(f"Database connection not available, couldn't update message {message_uid} with audio_stream_url")
+        
         logger.info(f"Agent response added to conversation: {conversation_uid}")
+        
+        # Publish the agent's message to a message queue for websocket notifications
+        # This allows the frontend to know when to start playing the audio
+        if pubsub_client:
+            try:
+                # Create a simplified version of the message that's guaranteed to be JSON serializable
+                serializable_message = {
+                    "type": "agent_response",
+                    "message": {
+                        "message_uid": message_uid,
+                        "content": response_text,
+                        "message_type": "agent",
+                        "audio_stream_url": audio_stream_url,
+                        "metadata": metadata,
+                        "conversation_uid": conversation_uid,
+                        "agent_uid": agent_uid
+                    },
+                    "conversation_uid": conversation_uid
+                }
+                
+                await pubsub_client.publish(
+                    f"conversation:{conversation_uid}:messages",
+                    json.dumps(serializable_message, cls=JSONEncoder)
+                )
+                logger.info(f"Published agent response for conversation: {conversation_uid}")
+            except Exception as e:
+                logger.error(f"Failed to publish agent response: {str(e)}")
+                import traceback
+                logger.error(f"Publish error traceback: {traceback.format_exc()}")
+        
+        return agent_message
     except Exception as e:
         logger.error(f"Error processing agent response: {str(e)}")
         raise
