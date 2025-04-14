@@ -1,7 +1,8 @@
 import React, { useEffect } from "react";
 import { useLeopard } from "@picovoice/leopard-react";
+import { FaMicrophone, FaMicrophoneSlash } from "react-icons/fa"; // Import microphone icons
 
-export default function SpeechToText({ onTranscription }) {
+export default function SpeechToText({ onTranscription, config }) {
   const {
     result,
     isLoaded,
@@ -15,30 +16,25 @@ export default function SpeechToText({ onTranscription }) {
     release,
   } = useLeopard();
 
-  const leopardModel = {
-    publicPath: "/model/leopard_params.pv",
-  };
-  const accessKey = "htYQGBJfO5TGG+9srWAQkzaA/5ld1v31RVwHynOHMvZb0Q//ZL2z7g==";
-
   const initEngine = async () => {
     try {
-      await init(accessKey, leopardModel);
+      await init(config.accessKey, { publicPath: config.publicPath });
     } catch (e) {
       console.error("Error initializing Leopard:", e);
     }
   };
+
+  useEffect(() => {
+    initEngine();
+  }, [config]); // Reinitialize if config changes
+
   useEffect(() => {
     if (result !== null) {
-      if (onTranscription) {
-        onTranscription(result.transcript);
-      }
+      onTranscription(result.transcript);
     }
-  }, [result, onTranscription]);
+  }, [result]);
 
   const toggleRecord = async () => {
-    if (!isLoaded) {
-      initEngine();
-    }
     if (isRecording) {
       await stopRecording();
     } else {
@@ -47,14 +43,17 @@ export default function SpeechToText({ onTranscription }) {
   };
 
   return (
-    <div>
-      <button onClick={initEngine} disabled={isLoaded}>
-        Initialize Leopard
+    <div className="flex flex-col items-center space-y-4">
+      <button
+        onClick={toggleRecord}
+        className="bg-blue-500 p-3 rounded-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-30 m-1"
+      >
+        {isRecording ? (
+          <FaMicrophone size={24} />
+        ) : (
+          <FaMicrophoneSlash size={24} />
+        )}
       </button>
-      <button onClick={toggleRecord}>
-        {isRecording ? "Stop Recording" : "Start Recording"}
-      </button>
-      <p>{result?.transcript}</p>
     </div>
   );
 }

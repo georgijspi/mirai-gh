@@ -28,8 +28,8 @@ const ChatNow = ({ config }) => {
   };
 
   const handleTranscription = (transcription) => {
-    if (transcription) {
-    }
+    const userMessage = { text: transcription, sender: "user" };
+    setMessages((prev) => [...prev, userMessage]);
   };
 
   return (
@@ -77,18 +77,15 @@ const ChatNow = ({ config }) => {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type your message..."
-            className="flex-1 p-3 bg-gray-800 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 p-3 m-1 bg-gray-800 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <div className="px-2"></div>
+          <SpeechToText onTranscription={handleTranscription} />
           <button
             onClick={handleSend}
-            className="bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
+            className="bg-blue-500 text-white rounded-md hover:bg-blue-600 transition m-1"
           >
             Send
           </button>
-        </div>
-        <div className="mt-4">
-          <SpeechToText onTranscription={handleTranscription} />
         </div>
       </div>
     </div>
