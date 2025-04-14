@@ -18,7 +18,9 @@ export default function SpeechToText({ onTranscription, config }) {
 
   const initEngine = async () => {
     try {
-      await init(config.accessKey, { publicPath: config.publicPath });
+      await init(config.accessKey, {
+        publicPath: config.leopardModelPublicPath,
+      });
     } catch (e) {
       console.error("Error initializing Leopard:", e);
     }
