@@ -37,6 +37,10 @@ export default function SpeechToText({ onTranscription, config }) {
   }, [result]);
 
   const toggleRecord = async () => {
+    if (!isLoaded) {
+      alert("Leopard is not loaded yet.");
+      return;
+    }
     if (isRecording) {
       await stopRecording();
     } else {
