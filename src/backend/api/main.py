@@ -2,8 +2,9 @@ from fastapi import FastAPI, APIRouter
 import uvicorn
 import logging
 import os
+from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers import tts, auth, llm, agent, conversation, statistics, global_conversation
+from api.routers import tts, auth, llm, agent, conversation, statistics, global_conversation, websocket
 from ttsModule.ttsModule import tts as tts_model
 from api.database import connect_to_mongodb, close_mongodb_connection
 
@@ -15,6 +16,15 @@ app = FastAPI(
     title="MirAI API",
     description="API for MirAI Local Assistant functionalities.",
     version="0.1.0"
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.on_event("startup")
@@ -65,6 +75,12 @@ api_router.include_router(global_conversation.router)
 logger.info("Included all routers under /mirai/api")
 
 app.include_router(api_router)
+
+# Mount WebSocket router separately to avoid CORS issues
+ws_router = APIRouter(prefix="/mirai/api/ws")
+ws_router.include_router(websocket.router)
+app.include_router(ws_router)
+logger.info("Mounted WebSocket router at /mirai/api/ws")
 
 @app.get("/", tags=["Health Check"])
 async def read_root():

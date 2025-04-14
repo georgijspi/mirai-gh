@@ -55,9 +55,16 @@ Keep your responses conversational and natural.
         
         for message in messages:
             role = "user" if message["message_type"] == MessageType.USER else "assistant"
+            
+            # Check if agent name exists in metadata for agent messages
+            agent_name = None
+            if role == "assistant" and "metadata" in message and message["metadata"] and "agent_name" in message["metadata"]:
+                agent_name = message["metadata"]["agent_name"]
+            
             formatted_messages.append({
                 "role": role,
-                "content": message["content"]
+                "content": message["content"],
+                "agent_name": agent_name
             })
         
         return formatted_messages
@@ -85,7 +92,12 @@ Keep your responses conversational and natural.
         for message in message_history:
             role = message["role"]
             content = message["content"]
-            prompt += f"{role.capitalize()}: {content}\n\n"
+            
+            # If it's an assistant message and has an agent name, include it
+            if role == "assistant" and "agent_name" in message and message["agent_name"]:
+                prompt += f"{message['agent_name']}: {content}\n\n"
+            else:
+                prompt += f"{role.capitalize()}: {content}\n\n"
         
         # Add current message
         prompt += f"User: {current_message}\n\nAssistant:"

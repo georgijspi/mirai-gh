@@ -145,3 +145,54 @@ async def list_voices(
             status_code=500,
             detail=f"Failed to get available voices: {str(e)}"
         )
+
+@router.get("/stream/{message_uid}")
+async def stream_tts(
+    message_uid: str,
+    conversation_uid: Optional[str] = None,
+    user = Depends(get_current_user) if not DEV_MODE else None
+):
+    """Stream a generated voice line as audio content."""
+    try:
+        # Get the voice file path
+        voice_path = await get_voice_path(message_uid, conversation_uid)
+        
+        if not voice_path:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Voice file for message {message_uid} not found"
+            )
+        
+        # Get the absolute path
+        abs_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+            "..",
+            voice_path
+        )
+        
+        # Check if the file exists
+        if not os.path.exists(abs_path):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Voice file not found at path: {abs_path}"
+            )
+        
+        # Return the file with headers for streaming audio
+        return FileResponse(
+            abs_path,
+            media_type="audio/wav",
+            headers={
+                "Content-Disposition": f"inline; filename=message_{message_uid}.wav",
+                "Accept-Ranges": "bytes",
+                "Cache-Control": "no-cache",
+                "X-Message-UID": message_uid
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to stream voice file: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to stream voice file: {str(e)}"
+        )
