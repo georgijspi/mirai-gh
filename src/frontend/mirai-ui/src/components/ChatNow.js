@@ -1,6 +1,7 @@
 import React, { useState } from "react";
+import SpeechToText from "./Stt";
 
-const ChatNow = () => {
+const ChatNow = ({ config }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
 
@@ -9,6 +10,7 @@ const ChatNow = () => {
 
     const userMessage = { text: input, sender: "user" };
     setMessages((prev) => [...prev, userMessage]);
+    setInput("");
 
     setTimeout(() => {
       const botResponse = {
@@ -17,14 +19,17 @@ const ChatNow = () => {
       };
       setMessages((prev) => [...prev, botResponse]);
     }, 500);
-
-    setInput("");
   };
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
       handleSend();
     }
+  };
+
+  const handleTranscription = (transcription) => {
+    const userMessage = { text: transcription, sender: "user" };
+    setMessages((prev) => [...prev, userMessage]);
   };
 
   return (
@@ -72,12 +77,12 @@ const ChatNow = () => {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type your message..."
-            className="flex-1 p-3 bg-gray-800 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 p-3 m-1 bg-gray-800 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <div className="px-2"></div>
+          <SpeechToText onTranscription={handleTranscription} config={config} />
           <button
             onClick={handleSend}
-            className="bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
+            className="bg-blue-500 text-white rounded-md hover:bg-blue-600 transition m-1"
           >
             Send
           </button>

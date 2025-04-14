@@ -9,6 +9,18 @@ import TestUI from "./components/TestUI";
 function App() {
   const [selectedTab, setSelectedTab] = useState("ChatNow");
   const [APITest, setAPITest] = useState(false);
+  const [config, setConfig] = useState({
+    wakeWordModel: "porcupine",
+    wakeWordSensitivity: 0.5,
+    leopardModelPath: "path/to/leopard/model",
+  });
+
+  const handleConfigChange = (newConfig) => {
+    setConfig((prevConfig) => ({
+      ...prevConfig,
+      ...newConfig,
+    }));
+  };
 
   return (
     <>
@@ -24,8 +36,10 @@ function App() {
           setAPITest={setAPITest}
         />
         <div className="flex-1 bg-gray-800 overflow-auto">
-          {selectedTab === "ChatNow" && <ChatNow />}
-          {selectedTab === "LLMPerformance" && <LLMPerformance />}
+          {selectedTab === "ChatNow" && <ChatNow config={config} />}
+          {selectedTab === "LLMPerformance" && (
+            <LLMPerformance onConfigChange={handleConfigChange} />
+          )}
           {selectedTab === "APIModuleConfig" && <APIModuleConfig />}
         </div>
       </div>
