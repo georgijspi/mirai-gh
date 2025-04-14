@@ -79,7 +79,7 @@ const ChatNow = ({ config }) => {
             placeholder="Type your message..."
             className="flex-1 p-3 m-1 bg-gray-800 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <SpeechToText onTranscription={handleTranscription} />
+          <SpeechToText onTranscription={handleTranscription} config={config} />
           <button
             onClick={handleSend}
             className="bg-blue-500 text-white rounded-md hover:bg-blue-600 transition m-1"

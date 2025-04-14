@@ -3,12 +3,18 @@ import React, { useState } from "react";
 const LLMPerformance = ({ onConfigChange }) => {
   const [wakeWordModel, setWakeWordModel] = useState("porcupine");
   const [wakeWordSensitivity, setWakeWordSensitivity] = useState(0.5);
-  const [leopardModelPath, setLeopardModelPath] = useState(
-    "path/to/leopard/model"
+  const [accessKey, setAccessKey] = useState("YOUR_ACCESS_KEY");
+  const [leopardModelPublicPath, setLeopardModelPublicPath] = useState(
+    "/model/leopard_params.pv"
   );
 
   const handleConfigChange = () => {
-    onConfigChange({ wakeWordModel, wakeWordSensitivity, leopardModelPath });
+    onConfigChange({
+      wakeWordModel,
+      wakeWordSensitivity,
+      leopardModelPublicPath,
+      accessKey,
+    });
   };
 
   return (
@@ -48,15 +54,27 @@ const LLMPerformance = ({ onConfigChange }) => {
           <h4 className="text-xl font-bold mb-4 text-white">
             Speech-to-Text Configuration
           </h4>
-          <label className="block text-gray-300 mb-2">Leopard Model Path</label>
+          <label className="block text-gray-300 mb-2">
+            Leopard Model Public Path
+          </label>
           <input
             type="text"
-            value={leopardModelPath}
-            onChange={(e) => setLeopardModelPath(e.target.value)}
+            value={leopardModelPublicPath}
+            onChange={(e) => setLeopardModelPublicPath(e.target.value)}
             className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
+        {/* Access Key Configuration */}
+        <div>
+          <h4 className="text-xl font-bold mb-4 text-white">Access Key</h4>
+          <input
+            type="text"
+            value={accessKey}
+            onChange={(e) => setAccessKey(e.target.value)}
+            className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
         <button
           onClick={handleConfigChange}
           className="mt-6 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition"
