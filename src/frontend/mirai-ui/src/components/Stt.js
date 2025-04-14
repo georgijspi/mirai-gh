@@ -18,7 +18,9 @@ export default function SpeechToText({ onTranscription, config }) {
 
   const initEngine = async () => {
     try {
-      await init(config.accessKey, { publicPath: config.publicPath });
+      await init(config.accessKey, {
+        publicPath: config.leopardModelPublicPath,
+      });
     } catch (e) {
       console.error("Error initializing Leopard:", e);
     }
@@ -35,6 +37,10 @@ export default function SpeechToText({ onTranscription, config }) {
   }, [result]);
 
   const toggleRecord = async () => {
+    if (!isLoaded) {
+      alert("Leopard is not loaded yet.");
+      return;
+    }
     if (isRecording) {
       await stopRecording();
     } else {
