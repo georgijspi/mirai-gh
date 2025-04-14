@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { useLeopard } from "@picovoice/leopard-react";
-import { FaMicrophone, FaMicrophoneSlash } from "react-icons/fa"; // Import microphone icons
+import { FaMicrophone, FaMicrophoneSlash } from "react-icons/fa";
 
 export default function SpeechToText({ onTranscription, config }) {
   const {
@@ -26,7 +26,7 @@ export default function SpeechToText({ onTranscription, config }) {
 
   useEffect(() => {
     initEngine();
-  }, [config]); // Reinitialize if config changes
+  }, [config]);
 
   useEffect(() => {
     if (result !== null) {
