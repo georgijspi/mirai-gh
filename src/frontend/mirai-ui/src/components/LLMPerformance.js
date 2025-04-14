@@ -5,7 +5,7 @@ const LLMPerformance = ({ onConfigChange }) => {
   const [wakeWordSensitivity, setWakeWordSensitivity] = useState(0.5);
   const [accessKey, setAccessKey] = useState("YOUR_ACCESS_KEY");
   const [leopardModelPublicPath, setLeopardModelPublicPath] = useState(
-    "/model/leopard_params.pv"
+    "/models/leopard_params.pv"
   );
 
   const handleConfigChange = () => {
