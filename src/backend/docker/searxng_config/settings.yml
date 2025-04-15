@@ -1,0 +1,34 @@
+use_default_settings: true
+
+server:
+  secret_key: "MirAI-SearchEngine-Key-12345"
+  bind_address: "0.0.0.0"
+  port: 8080
+  api_disabled: false
+  limiter: false
+  base_url: "http://localhost:8080/"
+
+search:
+  formats:
+    - html
+    - json
+
+general:
+  debug: false
+  instance_name: "MirAI Search"
+
+ui:
+  static_use_hash: false
+  default_theme: simple
+  theme_args:
+    simple_style: light
+
+engines:
+  - name: google
+    shortcut: g
+  - name: duckduckgo
+    shortcut: d
+  - name: bing
+    shortcut: b
+  - name: brave
+    shortcut: br 

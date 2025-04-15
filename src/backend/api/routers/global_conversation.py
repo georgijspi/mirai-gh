@@ -31,6 +31,7 @@ from ..services.llm_service import get_llm_config, generate_text
 from ..services.tts_service import generate_voice
 from promptBuilderModule.prompt_builder import PromptBuilder
 from ..database import db, pubsub_client
+from ..services.rag_service import augment_conversation_context
 
 logger = logging.getLogger(__name__)
 
@@ -52,29 +53,67 @@ class JSONEncoder(json.JSONEncoder):
             return o.isoformat()
         return super().default(o)
 
-def build_global_prompt(user_message: str, agent_name: str, conversation_messages: List[Dict[str, Any]], agent_config: Dict[str, Any], tts_instructions: Optional[str] = None) -> str:
-    """Build a prompt for the global conversation."""
+def build_global_prompt(user_message: str, agent_name: str, conversation_messages: List[Dict[str, Any]], agent_config: Dict[str, Any], tts_instructions: Optional[str] = None, rag_context: Optional[str] = None) -> str:
+    """Build a prompt for the global conversation with very clear instructions."""
     # Serialize agent_config using json_util
     agent_config_bson = json_util.dumps(agent_config)
     agent_config_json = json.loads(agent_config_bson)
     
-    # Use the PromptBuilder to create a prompt
-    # For global conversation, add special context for the multi-agent conversation
-    global_context = f"""
-You are part of a multi-agent conversation where users can talk to different AI assistants by name.
-You have been specifically addressed as {agent_name}.
-You should respond in the persona of {agent_name} as defined in your personality prompt.
-You should be aware of the context of the conversation, including messages sent to other agents.
-"""
+    # Limit to recent messages to prevent context overload
+    recent_messages = conversation_messages[-8:] if len(conversation_messages) > 8 else conversation_messages
     
-    # Combine the global context with the agent's personality
-    personality = f"{global_context}\n\n{agent_config_json['personality_prompt']}"
+    # The final system prompt will combine several sections
+    system_prompt_parts = []
     
+    # 1. Basic identity and role instruction
+    system_prompt_parts.append(f"""## AGENT IDENTITY
+You are {agent_name}. You must stay in character as {agent_name} at all times.
+
+## CORE PERSONALITY
+{agent_config_json['personality_prompt']}""")
+    
+    # 2. Global conversation context
+    system_prompt_parts.append("""## GLOBAL CHAT CONTEXT
+You are in a group conversation where users can address different AI assistants by name.
+You should ONLY respond when addressed by your name.
+The current message is specifically directed to YOU.""")
+    
+    # 3. If RAG context is available, add it with clear instructions
+    if rag_context:
+        system_prompt_parts.append(f"""## SEARCH RESULTS
+{rag_context}""")
+        
+    # 4. Add explicit instructions for the current query
+    system_prompt_parts.append(f"""## CURRENT QUERY
+The user has asked you: "{user_message}"
+
+## RESPONSE INSTRUCTIONS
+1. Provide a direct, factual response to the query
+2. Maintain your character voice and personality
+3. Focus ONLY on the current query
+4. If search results are provided above, use that factual information in your response
+5. DO NOT mention the search process in your response
+6. DO NOT give safety warnings unless specifically asked about dangerous topics
+7. Be helpful, accurate, and stay in character
+
+## IMPORTANT
+Your response should be informative but concise, factually accurate, and in your character's voice.""")
+    
+    # 5. Add TTS instructions if provided
+    if tts_instructions:
+        system_prompt_parts.append(f"""## TTS INSTRUCTIONS
+{tts_instructions}""")
+
+    # Combine all parts with proper spacing
+    personality = "\n\n".join(system_prompt_parts)
+    
+    # Build the prompt with minimal conversation history to keep focus on the current question
     return PromptBuilder.create_prompt(
         personality_prompt=personality,
-        messages=conversation_messages,
+        messages=recent_messages[-4:] if len(recent_messages) > 4 else recent_messages,  # Use even fewer messages
         current_message=user_message,
-        tts_instructions=tts_instructions
+        tts_instructions=None,  # Already included in the personality prompt
+        rag_context=None  # Already included in the personality prompt
     )
 
 @router.get("", response_model=GlobalConversationResponse)
@@ -186,6 +225,10 @@ async def process_agent_global_response(
         conversation = await get_global_conversation_with_messages(limit=20)
         conversation_messages = conversation.get("messages", [])
         
+        # Ensure all messages have the correct conversation_uid
+        for message in conversation_messages:
+            message["conversation_uid"] = "global"
+        
         # Serialize MongoDB documents using json_util
         conversation_messages_bson = json_util.dumps(conversation_messages)
         conversation_messages_json = json.loads(conversation_messages_bson)
@@ -204,8 +247,18 @@ async def process_agent_global_response(
         
         tts_instructions = llm_config_json.get("tts_instructions")
         
-        # Build the prompt with TTS instructions and agent name for the global conversation
-        prompt = build_global_prompt(user_message, agent_name, conversation_messages_json, agent_config, tts_instructions)
+        rag_context = None
+        
+        # Augment context with RAG if needed
+        rag_result = await augment_conversation_context(conversation_messages_json, user_message)
+        if rag_result["rag_applied"] and rag_result["system_message"]:
+            rag_context = rag_result["system_message"]["content"]
+            logger.info(f"RAG applied to global conversation query: {user_message}")
+            if "search_terms" in rag_result and rag_result["search_terms"]:
+                logger.info(f"Search terms used for RAG: {rag_result['search_terms']}")
+        
+        # Build the prompt with TTS instructions, agent name, and RAG context for the global conversation
+        prompt = build_global_prompt(user_message, agent_name, conversation_messages_json, agent_config, tts_instructions, rag_context)
         
         # Generate response from LLM
         response_text = await generate_text(
@@ -265,6 +318,12 @@ async def process_agent_global_response(
             metadata["response_time"] = f"{response_time:.2f}"
         if audio_duration:
             metadata["audio_duration"] = f"{audio_duration:.2f}"
+            
+        # If RAG was applied, include that in the metadata
+        if rag_context:
+            metadata["rag_applied"] = True
+            metadata["query_type"] = rag_result["query_type"]
+            metadata["search_results_count"] = len(rag_result["search_results"])
         
         # Add agent message to the global conversation
         agent_message = await add_message_to_global_conversation(
