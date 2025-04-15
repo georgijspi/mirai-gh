@@ -28,8 +28,7 @@ const ChatNow = ({ config }) => {
   };
 
   const handleTranscription = (transcription) => {
-    const userMessage = { text: transcription, sender: "user" };
-    setMessages((prev) => [...prev, userMessage]);
+    setInput(transcription);
   };
 
   return (

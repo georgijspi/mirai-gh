@@ -1,20 +1,33 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
-const LLMPerformance = ({ onConfigChange }) => {
-  const [wakeWordModel, setWakeWordModel] = useState("porcupine");
-  const [wakeWordSensitivity, setWakeWordSensitivity] = useState(0.5);
-  const [accessKey, setAccessKey] = useState("YOUR_ACCESS_KEY");
+// List of built-in keywords for Porcupine
+const builtInKeywords = ["Alexa","Americano","Blueberry","Bumblebee","Computer","Grapefruit","Grasshopper","Hey Google","Hey Siri","Jarvis","Okay Google","Picovoice","Porcupine","Terminator"];
+
+const LLMPerformance = ({ onConfigChange, config }) => {
+  const [wakeWordModel, setWakeWordModel] = useState(config.wakeWordModel || "Grapefruit");
+  const [wakeWordSensitivity, setWakeWordSensitivity] = useState(config.wakeWordSensitivity || 0.5);
+  const [accessKey, setAccessKey] = useState(config.accessKey || "");
   const [leopardModelPublicPath, setLeopardModelPublicPath] = useState(
-    "/models/leopard_params.pv"
+    config.leopardModelPublicPath || "/models/leopard_params.pv"
   );
 
+  // Update component state when config changes
+  useEffect(() => {
+    setWakeWordModel(config.wakeWordModel || "Grapefruit");
+    setWakeWordSensitivity(config.wakeWordSensitivity || 0.5);
+    setAccessKey(config.accessKey || "");
+    setLeopardModelPublicPath(config.leopardModelPublicPath || "/models/leopard_params.pv");
+  }, [config]);
+
   const handleConfigChange = () => {
-    onConfigChange({
+    const newConfig = {
       wakeWordModel,
       wakeWordSensitivity,
       leopardModelPublicPath,
       accessKey,
-    });
+    };
+    console.log("Saving new config:", newConfig);
+    onConfigChange(newConfig);
   };
 
   return (
@@ -28,12 +41,15 @@ const LLMPerformance = ({ onConfigChange }) => {
             Wake Word Configuration
           </h4>
           <label className="block text-gray-300 mb-2">Wake Word Model</label>
-          <input
-            type="text"
+          <select
             value={wakeWordModel}
             onChange={(e) => setWakeWordModel(e.target.value)}
             className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          >
+            {builtInKeywords.map(keyword => (
+              <option key={keyword} value={keyword}>{keyword}</option>
+            ))}
+          </select>
 
           <label className="block text-gray-300 mb-2 mt-4">
             Wake Word Sensitivity
@@ -73,7 +89,11 @@ const LLMPerformance = ({ onConfigChange }) => {
             value={accessKey}
             onChange={(e) => setAccessKey(e.target.value)}
             className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter your Picovoice access key here"
           />
+          <p className="text-gray-400 text-sm mt-1">
+            Required for Leopard speech recognition. Get your key at <a href="https://console.picovoice.ai/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">console.picovoice.ai</a>
+          </p>
         </div>
         <button
           onClick={handleConfigChange}
@@ -84,7 +104,10 @@ const LLMPerformance = ({ onConfigChange }) => {
         {/* LLM Configuration */}
         <div>
           <label className="block text-gray-300 mb-2">Select Model</label>
-          <select className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <select 
+            className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            defaultValue="Llama 2-7B"
+          >
             <option>Llama 2-7B</option>
           </select>
         </div>
@@ -93,7 +116,7 @@ const LLMPerformance = ({ onConfigChange }) => {
           <label className="block text-gray-300 mb-2">Temperature</label>
           <input
             type="number"
-            value={0.7}
+            defaultValue={0.7}
             className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -102,7 +125,7 @@ const LLMPerformance = ({ onConfigChange }) => {
           <label className="block text-gray-300 mb-2">Max Tokens</label>
           <input
             type="number"
-            value={1000}
+            defaultValue={1000}
             className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
