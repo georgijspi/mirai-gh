@@ -48,6 +48,7 @@ function App() {
             />
           )}
           {selectedTab === "APIModuleConfig" && <APIModuleConfig />}
+          {selectedTab === "AgentConfiguration" && <AgentConfiguration />}
         </div>
       </div>
     </>
