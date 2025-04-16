@@ -3,7 +3,7 @@ import WakeWordConfig from "../components/wakeword/WakeWordConfig";
 import STTConfig from "../components/stt/STTConfig";
 import LLMConfig from "../components/llm/LLMConfig";
 
-const LLMPerformancePage = ({ onConfigChange, config }) => {
+const Settings = ({ onConfigChange, config }) => {
   const [keywordModel, setKeywordModel] = useState(
     config.keywordModel || "Alexa"
   );
@@ -55,7 +55,7 @@ const LLMPerformancePage = ({ onConfigChange, config }) => {
 
   return (
     <div className="flex-1 p-5">
-      <h3 className="text-2xl font-bold mb-6 text-white">LLM Performance</h3>
+      <h3 className="text-2xl font-bold mb-6 text-white">Settings</h3>
 
       <div className="space-y-8 max-w-md">
         <WakeWordConfig
@@ -91,4 +91,4 @@ const LLMPerformancePage = ({ onConfigChange, config }) => {
   );
 };
 
-export default LLMPerformancePage;
+export default Settings;
