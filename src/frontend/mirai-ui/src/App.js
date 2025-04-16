@@ -10,10 +10,12 @@ function App() {
   const [selectedTab, setSelectedTab] = useState("ChatNow");
   const [APITest, setAPITest] = useState(false);
   const [config, setConfig] = useState({
-    wakeWordModel: "Grapefruit",
-    wakeWordSensitivity: 0.5,
+    keywordModel: "Alexa",
     leopardModelPublicPath: "/models/leopard_params.pv",
+    porcupineModelPublicPath: "/models/porcupine_params.pv",
     accessKey: "",
+    useCustomKeyword: false,
+    customKeywordModelPath: "",
   });
 
   const handleConfigChange = (newConfig) => {
@@ -40,7 +42,10 @@ function App() {
         <div className="flex-1 bg-gray-800 overflow-auto">
           {selectedTab === "ChatNow" && <ChatNow config={config} />}
           {selectedTab === "LLMPerformance" && (
-            <LLMPerformance onConfigChange={handleConfigChange} config={config} />
+            <LLMPerformance
+              onConfigChange={handleConfigChange}
+              config={config}
+            />
           )}
           {selectedTab === "APIModuleConfig" && <APIModuleConfig />}
         </div>

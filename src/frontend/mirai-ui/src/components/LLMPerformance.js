@@ -1,30 +1,68 @@
 import React, { useState, useEffect } from "react";
 
 // List of built-in keywords for Porcupine
-const builtInKeywords = ["Alexa","Americano","Blueberry","Bumblebee","Computer","Grapefruit","Grasshopper","Hey Google","Hey Siri","Jarvis","Okay Google","Picovoice","Porcupine","Terminator"];
+const builtInKeywords = [
+  "Alexa",
+  "Americano",
+  "Blueberry",
+  "Bumblebee",
+  "Computer",
+  "Grapefruit",
+  "Grasshopper",
+  "Hey Google",
+  "Hey Siri",
+  "Jarvis",
+  "Okay Google",
+  "Picovoice",
+  "Porcupine",
+  "Terminator",
+];
 
 const LLMPerformance = ({ onConfigChange, config }) => {
-  const [wakeWordModel, setWakeWordModel] = useState(config.wakeWordModel || "Grapefruit");
-  const [wakeWordSensitivity, setWakeWordSensitivity] = useState(config.wakeWordSensitivity || 0.5);
+  const [keywordModel, setKeywordModel] = useState(
+    config.keywordModel || "Alexa"
+  );
   const [accessKey, setAccessKey] = useState(config.accessKey || "");
   const [leopardModelPublicPath, setLeopardModelPublicPath] = useState(
     config.leopardModelPublicPath || "/models/leopard_params.pv"
   );
+  const [porcupineModelPublicPath, setPorcupineModelPublicPath] = useState(
+    config.porcupineModelPublicPath || "/models/porcupine_params.pv"
+  );
+  const [customKeywordModelPath, setCustomKeywordModelPath] = useState(
+    config.customKeywordModelPath || ""
+  );
+  const [customKeywordLabel, setCustomKeywordLabel] = useState(
+    config.customKeywordLabel || "Custom Keyword"
+  );
+  const [useCustomKeyword, setUseCustomKeyword] = useState(
+    config.useCustomKeyword || false
+  );
 
   // Update component state when config changes
   useEffect(() => {
-    setWakeWordModel(config.wakeWordModel || "Grapefruit");
-    setWakeWordSensitivity(config.wakeWordSensitivity || 0.5);
+    setKeywordModel(config.keywordModel || "Alexa");
     setAccessKey(config.accessKey || "");
-    setLeopardModelPublicPath(config.leopardModelPublicPath || "/models/leopard_params.pv");
+    setLeopardModelPublicPath(
+      config.leopardModelPublicPath || "/models/leopard_params.pv"
+    );
+    setPorcupineModelPublicPath(
+      config.porcupineModelPublicPath || "/models/porcupine_params.pv"
+    );
+    setCustomKeywordModelPath(config.customKeywordModelPath || "");
+    setCustomKeywordLabel(config.customKeywordLabel || "Custom Keyword");
+    setUseCustomKeyword(config.useCustomKeyword || false);
   }, [config]);
 
   const handleConfigChange = () => {
     const newConfig = {
-      wakeWordModel,
-      wakeWordSensitivity,
+      keywordModel,
       leopardModelPublicPath,
+      porcupineModelPublicPath,
       accessKey,
+      customKeywordModelPath,
+      customKeywordLabel,
+      useCustomKeyword,
     };
     console.log("Saving new config:", newConfig);
     onConfigChange(newConfig);
@@ -40,28 +78,81 @@ const LLMPerformance = ({ onConfigChange, config }) => {
           <h4 className="text-xl font-bold mb-4 text-white">
             Wake Word Configuration
           </h4>
-          <label className="block text-gray-300 mb-2">Wake Word Model</label>
-          <select
-            value={wakeWordModel}
-            onChange={(e) => setWakeWordModel(e.target.value)}
-            className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {builtInKeywords.map(keyword => (
-              <option key={keyword} value={keyword}>{keyword}</option>
-            ))}
-          </select>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-gray-300 mb-2">
+                Built-in Wake Word Model
+              </label>
+              <select
+                value={keywordModel}
+                onChange={(e) => setKeywordModel(e.target.value)}
+                className={`w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  useCustomKeyword ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+                disabled={useCustomKeyword}
+              >
+                {builtInKeywords.map((keyword) => (
+                  <option key={keyword} value={keyword}>
+                    {keyword}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-gray-300 mb-2">
+                Custom Keyword Model Path
+              </label>
+              <input
+                type="text"
+                value={customKeywordModelPath}
+                onChange={(e) => setCustomKeywordModelPath(e.target.value)}
+                className={`w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  !useCustomKeyword ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+                placeholder="Path to your custom keyword model"
+                disabled={!useCustomKeyword}
+              />
+            </div>
+
+            <div>
+              <label className="block text-gray-300 mb-2">
+                Custom Keyword Label
+              </label>
+              <input
+                type="text"
+                value={customKeywordLabel}
+                onChange={(e) => setCustomKeywordLabel(e.target.value)}
+                className={`w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  !useCustomKeyword ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+                placeholder="Label for your custom keyword"
+                disabled={!useCustomKeyword}
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="flex items-center text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={useCustomKeyword}
+                  onChange={(e) => setUseCustomKeyword(e.target.checked)}
+                  className="mr-2"
+                />
+                Use Custom Keyword Model
+              </label>
+            </div>
+          </div>
 
           <label className="block text-gray-300 mb-2 mt-4">
-            Wake Word Sensitivity
+            Porcupine Model Public Path
           </label>
           <input
-            type="number"
-            value={wakeWordSensitivity}
-            onChange={(e) => setWakeWordSensitivity(parseFloat(e.target.value))}
+            type="text"
+            value={porcupineModelPublicPath}
+            onChange={(e) => setPorcupineModelPublicPath(e.target.value)}
             className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            step="0.1"
-            min="0"
-            max="1"
           />
         </div>
 
@@ -92,7 +183,15 @@ const LLMPerformance = ({ onConfigChange, config }) => {
             placeholder="Enter your Picovoice access key here"
           />
           <p className="text-gray-400 text-sm mt-1">
-            Required for Leopard speech recognition. Get your key at <a href="https://console.picovoice.ai/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">console.picovoice.ai</a>
+            Required for Leopard speech recognition. Get your key at{" "}
+            <a
+              href="https://console.picovoice.ai/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:underline"
+            >
+              console.picovoice.ai
+            </a>
           </p>
         </div>
         <button
@@ -104,7 +203,7 @@ const LLMPerformance = ({ onConfigChange, config }) => {
         {/* LLM Configuration */}
         <div>
           <label className="block text-gray-300 mb-2">Select Model</label>
-          <select 
+          <select
             className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             defaultValue="Llama 2-7B"
           >
