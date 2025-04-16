@@ -3,7 +3,7 @@ import { useState } from "react";
 import Sidebar from "./components/Sidebar";
 import ChatNowPage from "./pages/ChatNowPage";
 import APIModuleConfigPage from "./pages/APIModuleConfigPage";
-import Settings from "./pages/Settings";
+import SettingsPage from "./pages/SettingsPage";
 import TestUIPage from "./pages/TestUIPage";
 import AgentConfigurationPage from "./pages/AgentConfigurationPage";
 
@@ -43,7 +43,7 @@ function App() {
         <div className="flex-1 bg-gray-800 overflow-auto">
           {selectedTab === "ChatNow" && <ChatNowPage config={config} />}
           {selectedTab === "Settings" && (
-            <Settings onConfigChange={handleConfigChange} config={config} />
+            <SettingsPage onConfigChange={handleConfigChange} config={config} />
           )}
           {selectedTab === "APIModuleConfig" && <APIModuleConfigPage />}
           {selectedTab === "AgentConfiguration" && <AgentConfigurationPage />}

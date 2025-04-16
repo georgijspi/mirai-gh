@@ -11,10 +11,10 @@ const Sidebar = ({ setSelectedTab, APITest, setAPITest }) => {
             <ul className="space-y-2 font-medium">
               <li>
                 <button
-                  onClick={() => setSelectedTab("LLMPerformance")}
+                  onClick={() => setSelectedTab("Settings")}
                   className="flex items-center p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 group cursor-pointer w-full"
                 >
-                  <span className="ms-3">LLM Performance</span>
+                  <span className="ms-3">Settings</span>
                 </button>
               </li>
               <li>

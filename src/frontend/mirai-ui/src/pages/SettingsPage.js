@@ -3,7 +3,7 @@ import WakeWordConfig from "../components/wakeword/WakeWordConfig";
 import STTConfig from "../components/stt/STTConfig";
 import LLMConfig from "../components/llm/LLMConfig";
 
-const Settings = ({ onConfigChange, config }) => {
+const SettingsPage = ({ onConfigChange, config }) => {
   const [keywordModel, setKeywordModel] = useState(
     config.keywordModel || "Alexa"
   );
@@ -91,4 +91,4 @@ const Settings = ({ onConfigChange, config }) => {
   );
 };
 
-export default Settings;
+export default SettingsPage;
