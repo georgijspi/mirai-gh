@@ -28,7 +28,18 @@ const ChatNow = ({ config }) => {
   };
 
   const handleTranscription = (transcription) => {
-    setInput(transcription);
+    if (transcription.trim() === "") return;
+
+    const userMessage = { text: transcription, sender: "user" };
+    setMessages((prev) => [...prev, userMessage]);
+
+    setTimeout(() => {
+      const botResponse = {
+        text: "This is a simulated response.",
+        sender: "bot",
+      };
+      setMessages((prev) => [...prev, botResponse]);
+    }, 500);
   };
 
   return (
