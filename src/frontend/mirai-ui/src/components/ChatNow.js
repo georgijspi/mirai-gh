@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import SpeechToText from "./Stt";
+import VoiceWidget from "./VoiceWidget";
 
 const ChatNow = ({ config }) => {
   const [messages, setMessages] = useState([]);
@@ -28,8 +28,18 @@ const ChatNow = ({ config }) => {
   };
 
   const handleTranscription = (transcription) => {
+    if (transcription.trim() === "") return;
+
     const userMessage = { text: transcription, sender: "user" };
     setMessages((prev) => [...prev, userMessage]);
+
+    setTimeout(() => {
+      const botResponse = {
+        text: "This is a simulated response.",
+        sender: "bot",
+      };
+      setMessages((prev) => [...prev, botResponse]);
+    }, 500);
   };
 
   return (
@@ -79,7 +89,7 @@ const ChatNow = ({ config }) => {
             placeholder="Type your message..."
             className="flex-1 p-3 m-1 bg-gray-800 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <SpeechToText onTranscription={handleTranscription} config={config} />
+          <VoiceWidget onTranscription={handleTranscription} config={config} />
           <button
             onClick={handleSend}
             className="bg-blue-500 text-white rounded-md hover:bg-blue-600 transition m-1"
