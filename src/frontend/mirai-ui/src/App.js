@@ -5,6 +5,7 @@ import ChatNow from "./components/ChatNow";
 import APIModuleConfig from "./components/APIModuleConfig";
 import LLMPerformance from "./components/LLMPerformance";
 import TestUI from "./components/TestUI";
+import AgentConfiguration from "./components/AgentConfiguration";
 
 function App() {
   const [selectedTab, setSelectedTab] = useState("ChatNow");
