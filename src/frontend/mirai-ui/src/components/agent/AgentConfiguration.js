@@ -5,6 +5,7 @@ import {
   archiveAgent,
   updateAgent,
   fetchAgentByUid,
+  uploadProfilePicture,
 } from "../../services/agentService";
 import { fetchLLMConfigs } from "../../services/llmService";
 import AgentForm from "./AgentForm";
@@ -22,7 +23,7 @@ const AgentConfiguration = () => {
     personality_prompt: "",
     voice_speaker: "",
     llm_config_uid: "",
-    profile_picture_path: "",
+    profile_picture: null,
     custom_voice_path: "",
     is_archived: false,
   });
@@ -31,6 +32,7 @@ const AgentConfiguration = () => {
     try {
       setLoading(true);
       const data = await fetchAgents(false);
+      console.log("data", data);
       setAgents(data.agents || []);
       setLoading(false);
     } catch (err) {
@@ -88,14 +90,28 @@ const AgentConfiguration = () => {
         return;
       }
 
-      const data = await createAgent(newAgent);
+      // Create the agent first
+      const agentData = { ...newAgent };
+      delete agentData.profile_picture; // Remove the file from the agent data
+      const data = await createAgent(agentData);
+
+      // If there's a profile picture, upload it
+      if (newAgent.profile_picture) {
+        try {
+          await uploadProfilePicture(data.agent_uid, newAgent.profile_picture);
+        } catch (uploadError) {
+          console.error("Error uploading profile picture:", uploadError);
+          // Don't fail the whole operation if profile picture upload fails
+        }
+      }
+
       setAgents([...agents, data]);
       setNewAgent({
         name: "",
         personality_prompt: "",
         voice_speaker: "",
         llm_config_uid: "",
-        profile_picture_path: "",
+        profile_picture: null,
         custom_voice_path: "",
         is_archived: false,
       });
@@ -134,10 +150,23 @@ const AgentConfiguration = () => {
         return;
       }
 
-      const updatedAgent = await updateAgent(
-        editingAgent.agent_uid,
-        editingAgent
-      );
+      // Update the agent first
+      const agentData = { ...editingAgent };
+      delete agentData.profile_picture; // Remove the file from the agent data
+      const updatedAgent = await updateAgent(editingAgent.agent_uid, agentData);
+
+      // If there's a new profile picture, upload it
+      if (editingAgent.profile_picture) {
+        try {
+          await uploadProfilePicture(
+            editingAgent.agent_uid,
+            editingAgent.profile_picture
+          );
+        } catch (uploadError) {
+          console.error("Error uploading profile picture:", uploadError);
+          // Don't fail the whole operation if profile picture upload fails
+        }
+      }
 
       setAgents(
         agents.map((agent) =>

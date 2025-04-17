@@ -120,21 +120,30 @@ const AgentForm = ({
       <div className="mb-4">
         <label
           className="block text-gray-700 text-sm font-bold mb-2"
-          htmlFor="profile_picture_path"
+          htmlFor="profile_picture"
         >
-          Profile Picture Path
+          Profile Picture
         </label>
         <input
           className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-          id="profile_picture_path"
-          name="profile_picture_path"
-          type="text"
-          value={agentData.profile_picture_path}
-          onChange={handleInputChange}
-          placeholder="Path to profile picture (optional)"
+          id="profile_picture"
+          name="profile_picture"
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files[0];
+            if (file) {
+              handleInputChange({
+                target: {
+                  name: "profile_picture",
+                  value: file,
+                },
+              });
+            }
+          }}
         />
         <p className="mt-1 text-sm text-gray-500">
-          Optional. Leave blank to use default profile picture.
+          Optional. Upload a profile picture for the agent.
         </p>
       </div>
 
