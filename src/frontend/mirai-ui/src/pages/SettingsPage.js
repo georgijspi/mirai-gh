@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import WakeWordConfig from "../components/wakeword/WakeWordConfig";
 import STTConfig from "../components/stt/STTConfig";
 import LLMConfig from "../components/llm/LLMConfig";
+import ModelManager from "../components/llm/ModelManager";
 
 const SettingsPage = ({ onConfigChange, config }) => {
   const [keywordModel, setKeywordModel] = useState(
@@ -23,6 +24,7 @@ const SettingsPage = ({ onConfigChange, config }) => {
   const [useCustomKeyword, setUseCustomKeyword] = useState(
     config.useCustomKeyword || false
   );
+  const [activeTab, setActiveTab] = useState("voice");
 
   // Update component state when config changes
   useEffect(() => {
@@ -57,35 +59,84 @@ const SettingsPage = ({ onConfigChange, config }) => {
     <div className="flex-1 p-5">
       <h3 className="text-2xl font-bold mb-6 text-white">Settings</h3>
 
-      <div className="space-y-8 max-w-md">
-        <WakeWordConfig
-          keywordModel={keywordModel}
-          setKeywordModel={setKeywordModel}
-          useCustomKeyword={useCustomKeyword}
-          setUseCustomKeyword={setUseCustomKeyword}
-          customKeywordModelPath={customKeywordModelPath}
-          setCustomKeywordModelPath={setCustomKeywordModelPath}
-          customKeywordLabel={customKeywordLabel}
-          setCustomKeywordLabel={setCustomKeywordLabel}
-          porcupineModelPublicPath={porcupineModelPublicPath}
-          setPorcupineModelPublicPath={setPorcupineModelPublicPath}
-        />
+      <div className="mb-6">
+        <div className="border-b border-gray-700">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab("voice")}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "voice"
+                  ? "border-blue-500 text-white bg-blue-800"
+                  : "border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300"
+              }`}
+            >
+              Voice Settings
+            </button>
+            <button
+              onClick={() => setActiveTab("llm")}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "llm"
+                  ? "border-blue-500 text-white bg-blue-800"
+                  : "border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300"
+              }`}
+            >
+              LLM Configuration
+            </button>
+            <button
+              onClick={() => setActiveTab("models")}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "models"
+                  ? "border-blue-500 text-white bg-blue-800"
+                  : "border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300"
+              }`}
+            >
+              Model Management
+            </button>
+          </nav>
+        </div>
+      </div>
 
-        <STTConfig
-          leopardModelPublicPath={leopardModelPublicPath}
-          setLeopardModelPublicPath={setLeopardModelPublicPath}
-          accessKey={accessKey}
-          setAccessKey={setAccessKey}
-        />
+      <div className={`space-y-8 ${activeTab === "models" ? "" : "max-w-md"}`}>
+        {activeTab === "voice" && (
+          <div className="space-y-8">
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+              <WakeWordConfig
+                keywordModel={keywordModel}
+                setKeywordModel={setKeywordModel}
+                useCustomKeyword={useCustomKeyword}
+                setUseCustomKeyword={setUseCustomKeyword}
+                customKeywordModelPath={customKeywordModelPath}
+                setCustomKeywordModelPath={setCustomKeywordModelPath}
+                customKeywordLabel={customKeywordLabel}
+                setCustomKeywordLabel={setCustomKeywordLabel}
+                porcupineModelPublicPath={porcupineModelPublicPath}
+                setPorcupineModelPublicPath={setPorcupineModelPublicPath}
+              />
+            </div>
 
-        <button
-          onClick={handleConfigChange}
-          className="mt-6 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition"
-        >
-          Save Configuration
-        </button>
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+              <STTConfig
+                leopardModelPublicPath={leopardModelPublicPath}
+                setLeopardModelPublicPath={setLeopardModelPublicPath}
+                accessKey={accessKey}
+                setAccessKey={setAccessKey}
+              />
+            </div>
+          </div>
+        )}
 
-        <LLMConfig />
+        {activeTab === "llm" && <LLMConfig />}
+
+        {activeTab === "models" && <ModelManager />}
+
+        {activeTab !== "llm" && activeTab !== "models" && (
+          <button
+            onClick={handleConfigChange}
+            className="mt-6 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition"
+          >
+            Save Configuration
+          </button>
+        )}
       </div>
     </div>
   );
