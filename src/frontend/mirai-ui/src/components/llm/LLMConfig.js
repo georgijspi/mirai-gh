@@ -78,7 +78,7 @@ const LLMConfig = () => {
 
     try {
       setLoading(true);
-      const response = await deleteLLMConfig(selectedConfig.config_uid);
+      await deleteLLMConfig(selectedConfig.config_uid);
       setMessage("Configuration deleted successfully");
       await loadConfigs();
       setSelectedConfig(null);
@@ -101,10 +101,7 @@ const LLMConfig = () => {
 
     try {
       setLoading(true);
-      const response = await updateLLMConfig(
-        editedConfig.config_uid,
-        editedConfig
-      );
+      await updateLLMConfig(editedConfig.config_uid, editedConfig);
       setMessage("Configuration updated successfully");
 
       // Fetch the updated config directly by its UID
