@@ -6,6 +6,7 @@ import {
   updateAgent,
   fetchAgentByUid,
   uploadProfilePicture,
+  uploadCustomVoice,
 } from "../../services/agentService";
 import { fetchLLMConfigs } from "../../services/llmService";
 import AgentForm from "./AgentForm";
@@ -24,7 +25,7 @@ const AgentConfiguration = () => {
     voice_speaker: "",
     llm_config_uid: "",
     profile_picture: null,
-    custom_voice_path: "",
+    custom_voice: null,
     is_archived: false,
   });
 
@@ -92,7 +93,8 @@ const AgentConfiguration = () => {
 
       // Create the agent first
       const agentData = { ...newAgent };
-      delete agentData.profile_picture; // Remove the file from the agent data
+      delete agentData.profile_picture;
+      delete agentData.custom_voice;
       const data = await createAgent(agentData);
 
       // If there's a profile picture, upload it
@@ -101,7 +103,15 @@ const AgentConfiguration = () => {
           await uploadProfilePicture(data.agent_uid, newAgent.profile_picture);
         } catch (uploadError) {
           console.error("Error uploading profile picture:", uploadError);
-          // Don't fail the whole operation if profile picture upload fails
+        }
+      }
+
+      // If there's a custom voice file, upload it
+      if (newAgent.custom_voice) {
+        try {
+          await uploadCustomVoice(data.agent_uid, newAgent.custom_voice);
+        } catch (uploadError) {
+          console.error("Error uploading custom voice file:", uploadError);
         }
       }
 
@@ -112,7 +122,7 @@ const AgentConfiguration = () => {
         voice_speaker: "",
         llm_config_uid: "",
         profile_picture: null,
-        custom_voice_path: "",
+        custom_voice: null,
         is_archived: false,
       });
       setShowAddForm(false);
@@ -152,7 +162,8 @@ const AgentConfiguration = () => {
 
       // Update the agent first
       const agentData = { ...editingAgent };
-      delete agentData.profile_picture; // Remove the file from the agent data
+      delete agentData.profile_picture;
+      delete agentData.custom_voice;
       const updatedAgent = await updateAgent(editingAgent.agent_uid, agentData);
 
       // If there's a new profile picture, upload it
@@ -164,7 +175,18 @@ const AgentConfiguration = () => {
           );
         } catch (uploadError) {
           console.error("Error uploading profile picture:", uploadError);
-          // Don't fail the whole operation if profile picture upload fails
+        }
+      }
+
+      // If there's a new custom voice file, upload it
+      if (editingAgent.custom_voice) {
+        try {
+          await uploadCustomVoice(
+            editingAgent.agent_uid,
+            editingAgent.custom_voice
+          );
+        } catch (uploadError) {
+          console.error("Error uploading custom voice file:", uploadError);
         }
       }
 

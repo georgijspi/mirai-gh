@@ -150,21 +150,30 @@ const AgentForm = ({
       <div className="mb-4">
         <label
           className="block text-gray-700 text-sm font-bold mb-2"
-          htmlFor="custom_voice_path"
+          htmlFor="custom_voice"
         >
-          Custom Voice Path
+          Custom Voice File
         </label>
         <input
           className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-          id="custom_voice_path"
-          name="custom_voice_path"
-          type="text"
-          value={agentData.custom_voice_path}
-          onChange={handleInputChange}
-          placeholder="Path to custom voice file (optional)"
+          id="custom_voice"
+          name="custom_voice"
+          type="file"
+          accept="audio/*"
+          onChange={(e) => {
+            const file = e.target.files[0];
+            if (file) {
+              handleInputChange({
+                target: {
+                  name: "custom_voice",
+                  value: file,
+                },
+              });
+            }
+          }}
         />
         <p className="mt-1 text-sm text-gray-500">
-          Optional. Leave blank to use default voice.
+          Optional. Upload a custom voice file for the agent.
         </p>
       </div>
 
