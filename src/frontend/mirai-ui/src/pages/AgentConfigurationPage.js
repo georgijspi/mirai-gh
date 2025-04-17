@@ -1,5 +1,5 @@
 import React from "react";
-import AgentConfiguration from "../components/AgentConfiguration";
+import AgentConfiguration from "../components/agent/AgentConfiguration";
 
 const AgentConfigurationPage = () => {
   return <AgentConfiguration />;
