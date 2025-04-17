@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   fetchAgents,
   createAgent,
@@ -20,29 +20,17 @@ const AgentConfiguration = () => {
   const [newAgent, setNewAgent] = useState({
     name: "",
     personality_prompt: "",
-    voice_speaker: "", // Default voice speaker
+    voice_speaker: "",
     llm_config_uid: "",
     profile_picture_path: "",
     custom_voice_path: "",
     is_archived: false,
   });
 
-  // Fetch agents from the API
-  useEffect(() => {
-    loadAgents();
-  }, []);
-
-  // Fetch LLM configurations when the add form is shown
-  useEffect(() => {
-    if (showAddForm || editingAgent) {
-      loadLlmConfigs();
-    }
-  }, [showAddForm, editingAgent]);
-
   const loadAgents = async () => {
     try {
       setLoading(true);
-      const data = await fetchAgents(false); // Don't include archived agents by default
+      const data = await fetchAgents(false);
       setAgents(data.agents || []);
       setLoading(false);
     } catch (err) {
@@ -53,45 +41,42 @@ const AgentConfiguration = () => {
   };
 
   const loadLlmConfigs = async () => {
+    if (llmConfigsLoading) return;
     try {
       setLlmConfigsLoading(true);
-      try {
-        setLlmConfigs(await fetchLLMConfigs(false));
-      } catch (err) {
-        console.error("Error fetching LLM configurations:", err);
-        setError("Failed to load LLM configurations. Please try again later.");
-      }
-      setLlmConfigsLoading(false);
+      const configs = await fetchLLMConfigs(false);
+      setLlmConfigs(configs || []);
     } catch (err) {
       console.error("Error fetching LLM configurations:", err);
       setError("Failed to load LLM configurations. Please try again later.");
+    } finally {
       setLlmConfigsLoading(false);
     }
   };
 
-  // Handle input changes for the new agent form
-  const handleInputChange = useCallback(
-    (e) => {
-      const { name, value, type, checked } = e.target;
-      if (editingAgent) {
-        setEditingAgent((prev) => ({
-          ...prev,
-          [name]: type === "checkbox" ? checked : value,
-        }));
-      } else {
-        setNewAgent((prev) => ({
-          ...prev,
-          [name]: type === "checkbox" ? checked : value,
-        }));
-      }
-    },
-    [editingAgent]
-  );
+  // Handle input changes for the form
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+
+    // Determine which state to update based on whether we're editing or creating
+    if (editingAgent) {
+      // We're editing an existing agent
+      setEditingAgent((prev) => ({
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      }));
+    } else {
+      // We're creating a new agent
+      setNewAgent((prev) => ({
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      }));
+    }
+  };
 
   // Add a new agent
   const addAgent = async () => {
     try {
-      // Validate required fields
       if (
         !newAgent.name ||
         !newAgent.personality_prompt ||
@@ -104,11 +89,7 @@ const AgentConfiguration = () => {
       }
 
       const data = await createAgent(newAgent);
-
-      // Add the new agent to the list
       setAgents([...agents, data]);
-
-      // Reset the form
       setNewAgent({
         name: "",
         personality_prompt: "",
@@ -118,8 +99,6 @@ const AgentConfiguration = () => {
         custom_voice_path: "",
         is_archived: false,
       });
-
-      // Hide the form
       setShowAddForm(false);
       setError(null);
     } catch (err) {
@@ -132,6 +111,7 @@ const AgentConfiguration = () => {
   const startEditingAgent = async (agentUid) => {
     try {
       const agent = await fetchAgentByUid(agentUid);
+      loadLlmConfigs();
       setEditingAgent(agent);
       setShowAddForm(false);
     } catch (err) {
@@ -143,7 +123,6 @@ const AgentConfiguration = () => {
   // Save edited agent
   const saveEditedAgent = async () => {
     try {
-      // Validate required fields
       if (
         !editingAgent.name ||
         !editingAgent.personality_prompt ||
@@ -160,14 +139,12 @@ const AgentConfiguration = () => {
         editingAgent
       );
 
-      // Update the agent in the list
       setAgents(
         agents.map((agent) =>
           agent.agent_uid === editingAgent.agent_uid ? updatedAgent : agent
         )
       );
 
-      // Reset the editing state
       setEditingAgent(null);
       setError(null);
     } catch (err) {
@@ -181,13 +158,11 @@ const AgentConfiguration = () => {
     setEditingAgent(null);
   };
 
-  // Delete an agent (hard delete - not implemented in the API)
+  // Delete an agent
   const deleteAgent = async (agentUid) => {
     if (window.confirm("Are you sure you want to delete this agent?")) {
       try {
         await archiveAgent(agentUid);
-
-        // Update the local state
         setAgents(agents.filter((agent) => agent.agent_uid !== agentUid));
       } catch (err) {
         console.error("Error deleting agent:", err);
@@ -196,28 +171,37 @@ const AgentConfiguration = () => {
     }
   };
 
+  // Fetch agents from the API
+  useEffect(() => {
+    loadAgents();
+  }, []);
+
   // Toggle the add form
   const toggleAddForm = () => {
     setShowAddForm(!showAddForm);
+    loadLlmConfigs();
     setEditingAgent(null);
-    if (!showAddForm) {
-      // Reset the form when showing it
-      setNewAgent({
-        name: "",
-        personality_prompt: "",
-        voice_speaker: "",
-        llm_config_uid: "",
-        profile_picture_path: "",
-        custom_voice_path: "",
-        is_archived: false,
-      });
-      setError(null);
-    }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Agent Configuration</h1>
+    <div className="p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold">Agent Configuration</h2>
+        <button
+          onClick={toggleAddForm}
+          className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+        >
+          {showAddForm ? "Cancel" : "Add New Agent"}
+        </button>
+      </div>
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -225,65 +209,63 @@ const AgentConfiguration = () => {
         </div>
       )}
 
-      <div className="mb-4">
-        <button
-          onClick={toggleAddForm}
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-        >
-          {showAddForm ? "Cancel" : "Add New Agent"}
-        </button>
-      </div>
-
-      {(showAddForm || editingAgent) && (
+      {showAddForm && (
         <AgentForm
-          agentData={editingAgent || newAgent}
-          isEditing={!!editingAgent}
+          agentData={newAgent}
+          isEditing={false}
           llmConfigs={llmConfigs}
           llmConfigsLoading={llmConfigsLoading}
           handleInputChange={handleInputChange}
-          onSubmit={editingAgent ? saveEditedAgent : addAgent}
-          onCancel={editingAgent ? cancelEditing : toggleAddForm}
+          onSubmit={addAgent}
+          onCancel={toggleAddForm}
         />
       )}
 
-      {loading ? (
-        <p>Loading agents...</p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {agents.map((agent) => (
-            <div
-              key={agent.agent_uid}
-              className="bg-white shadow-md rounded overflow-hidden"
-            >
-              <div className="p-4">
-                <h2 className="text-xl font-bold mb-2">{agent.name}</h2>
-                <p className="text-gray-700 mb-2">
-                  <span className="font-bold">Voice:</span>{" "}
-                  {agent.voice_speaker}
-                </p>
-                <p className="text-gray-700 mb-4 line-clamp-3">
-                  <span className="font-bold">Personality:</span>{" "}
-                  {agent.personality_prompt}
-                </p>
-                <div className="flex justify-between">
-                  <button
-                    onClick={() => startEditingAgent(agent.agent_uid)}
-                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => deleteAgent(agent.agent_uid)}
-                    className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm"
-                  >
-                    Delete
-                  </button>
-                </div>
+      {editingAgent && (
+        <AgentForm
+          agentData={editingAgent}
+          isEditing={true}
+          llmConfigs={llmConfigs}
+          llmConfigsLoading={llmConfigsLoading}
+          handleInputChange={handleInputChange}
+          onSubmit={saveEditedAgent}
+          onCancel={cancelEditing}
+        />
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+        {agents.map((agent) => (
+          <div
+            key={agent.agent_uid}
+            className="bg-white shadow-md rounded-lg p-4 border border-gray-200"
+          >
+            <div className="flex justify-between items-start">
+              <h3 className="text-lg font-semibold">{agent.name}</h3>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => startEditingAgent(agent.agent_uid)}
+                  className="text-blue-500 hover:text-blue-700"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => deleteAgent(agent.agent_uid)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  Delete
+                </button>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+            <p className="text-gray-600 mt-2 line-clamp-3">
+              {agent.personality_prompt}
+            </p>
+            <div className="mt-4 text-sm text-gray-500">
+              <p>Voice: {agent.voice_speaker || "Default"}</p>
+              <p>LLM Config: {agent.llm_config_uid}</p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
