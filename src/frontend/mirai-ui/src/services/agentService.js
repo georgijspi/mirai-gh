@@ -149,3 +149,32 @@ export const uploadProfilePicture = async (agentUid, file) => {
     throw error;
   }
 };
+
+/**
+ * Upload a custom voice file for an agent
+ * @param {string} agentUid - The unique identifier of the agent
+ * @param {File} file - The custom voice file to upload
+ * @returns {Promise<Object>} - Response containing the upload status
+ */
+export const uploadCustomVoice = async (agentUid, file) => {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(
+      `${API_BASE_URL}/agent/${agentUid}/custom-voice`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to upload custom voice file");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Error uploading custom voice file:", error);
+    throw error;
+  }
+};
