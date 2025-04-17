@@ -120,3 +120,32 @@ export const archiveAgent = async (agentUid) => {
     throw error;
   }
 };
+
+/**
+ * Upload a profile picture for an agent
+ * @param {string} agentUid - The unique identifier of the agent
+ * @param {File} file - The profile picture file to upload
+ * @returns {Promise<Object>} - Response containing the upload status
+ */
+export const uploadProfilePicture = async (agentUid, file) => {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(
+      `${API_BASE_URL}/agent/${agentUid}/profile-picture`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to upload profile picture");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Error uploading profile picture:", error);
+    throw error;
+  }
+};
