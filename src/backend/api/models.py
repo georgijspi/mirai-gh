@@ -156,7 +156,6 @@ class AgentBase(BaseModel):
     llm_config_uid: str
     profile_picture_path: Optional[str] = None
     custom_voice_path: Optional[str] = None
-    is_archived: bool = False
 
 class AgentCreate(AgentBase):
     """Model for creating a new agent."""

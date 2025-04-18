@@ -51,7 +51,6 @@ async def create_agent(
         "llm_config_uid": llm_config_uid,
         "profile_picture_path": profile_picture_path,
         "custom_voice_path": custom_voice_path,
-        "is_archived": False,
         "created_at": timestamp,
         "updated_at": timestamp
     }
@@ -67,12 +66,10 @@ async def get_agent(agent_uid: str) -> Optional[Dict[str, Any]]:
     agent = await db[AGENT_COLLECTION].find_one({"agent_uid": agent_uid})
     return agent
 
-async def get_all_agents(include_archived: bool = False) -> List[Dict[str, Any]]:
+async def get_all_agents() -> List[Dict[str, Any]]:
     """Get all agent configurations."""
     db = get_database()
-    query = {} if include_archived else {"is_archived": False}
-    cursor = db[AGENT_COLLECTION].find(query)
-    agents = await cursor.to_list(length=100)
+    agents = await db[AGENT_COLLECTION].find({}).to_list(length=100)
     return agents
 
 async def update_agent(uid: str, update_data: Union[AgentUpdate, Dict[str, Any]]) -> Agent:
@@ -104,18 +101,29 @@ async def update_agent(uid: str, update_data: Union[AgentUpdate, Dict[str, Any]]
     
     return await get_agent(uid)
 
-async def archive_agent(agent_uid: str) -> bool:
-    """Archive agent configuration."""
+async def delete_agent(agent_uid: str) -> bool:
+    """Permanently delete an agent."""
     db = get_database()
     
-    result = await db[AGENT_COLLECTION].update_one(
-        {"agent_uid": agent_uid},
-        {"$set": {"is_archived": True, "updated_at": datetime.utcnow()}}
-    )
-    
-    if result.modified_count == 0:
-        logger.warning(f"No agent archived with ID: {agent_uid}")
+    agent = await get_agent(agent_uid)
+    if not agent:
+        logger.warning(f"No agent found with ID: {agent_uid}")
         return False
     
-    logger.info(f"Archived agent with ID: {agent_uid}")
+    # Delete any associated files (profile pictures, voice files)
+    agent_dir = os.path.join(AGENT_DIR, agent_uid)
+    if os.path.exists(agent_dir):
+        try:
+            shutil.rmtree(agent_dir)
+            logger.info(f"Deleted agent directory: {agent_dir}")
+        except Exception as e:
+            logger.warning(f"Failed to delete agent directory: {str(e)}")
+    
+    result = await db[AGENT_COLLECTION].delete_one({"agent_uid": agent_uid})
+    
+    if result.deleted_count == 0:
+        logger.warning(f"No agent deleted with ID: {agent_uid}")
+        return False
+    
+    logger.info(f"Deleted agent with ID: {agent_uid}")
     return True 

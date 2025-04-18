@@ -18,7 +18,7 @@ from ..services.agent_service import (
     get_agent,
     get_all_agents,
     update_agent,
-    archive_agent
+    delete_agent
 )
 from ..services.tts_service import use_custom_voice
 
@@ -86,8 +86,21 @@ async def upload_profile_picture(
         agent_dir = os.path.join(AGENT_DIR, agent_uid)
         os.makedirs(agent_dir, exist_ok=True)
         
+        # Clean up existing profile picture if it exists
+        if agent.get('profile_picture_path'):
+            old_path = agent['profile_picture_path']
+            # Extract the filename from the path
+            old_filename = os.path.basename(old_path)
+            old_filepath = os.path.join(agent_dir, old_filename)
+            if os.path.exists(old_filepath):
+                try:
+                    os.remove(old_filepath)
+                    logger.info(f"Removed old profile picture: {old_filepath}")
+                except Exception as e:
+                    logger.warning(f"Failed to remove old profile picture: {str(e)}")
+        
         file_ext = os.path.splitext(file.filename)[1]
-        profile_filename = f"profile_{uuid.uuid4()}{file_ext}"
+        profile_filename = f"profile_{agent_uid}{file_ext}"
         
         file_path = os.path.join(agent_dir, profile_filename)
         with open(file_path, "wb") as buffer:
@@ -146,11 +159,10 @@ async def upload_custom_voice(
 
 @router.get("/list", response_model=AgentListResponse)
 async def list_agents(
-    include_archived: bool = False,
     current_user: dict = Depends(get_current_user)
 ):
     """List all agents."""
-    agents = await get_all_agents(include_archived)
+    agents = await get_all_agents()
     return {"agents": agents}
 
 @router.get("/{agent_uid}", response_model=AgentResponse)
@@ -203,26 +215,26 @@ async def update_agent_by_id(
         )
 
 @router.delete("/{agent_uid}", response_model=StatusResponse)
-async def archive_agent_by_id(
+async def delete_agent_by_id(
     agent_uid: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Archive an agent."""
+    """Permanently delete an agent."""
     try:
-        success = await archive_agent(agent_uid)
+        success = await delete_agent(agent_uid)
         
         if not success:
-            logger.warning(f"Agent not found for archive: {agent_uid}")
+            logger.warning(f"Agent not found for deletion: {agent_uid}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Agent not found"
             )
         
-        logger.info(f"Agent archived: {agent_uid}")
-        return {"status": "success", "message": "Agent archived successfully"}
+        logger.info(f"Agent deleted: {agent_uid}")
+        return {"status": "success", "message": "Agent deleted successfully"}
     except Exception as e:
-        logger.error(f"Error archiving agent: {str(e)}")
+        logger.error(f"Error deleting agent: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to archive agent: {str(e)}"
+            detail=f"Failed to delete agent: {str(e)}"
         ) 

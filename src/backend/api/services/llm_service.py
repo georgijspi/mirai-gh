@@ -156,10 +156,15 @@ async def pull_ollama_model(model_name: str) -> Dict[str, Any]:
 async def delete_ollama_model(model_name: str) -> Dict[str, Any]:
     """Delete a model from Ollama."""
     try:
+        data = json.dumps({"model": model_name})
+        headers = {"Content-Type": "application/json"}
+        
         async with httpx.AsyncClient() as client:
-            response = await client.delete(
+            response = await client.request(
+                "DELETE",
                 f"{OLLAMA_API_BASE}/delete",
-                json={"name": model_name}
+                content=data,
+                headers=headers
             )
             response.raise_for_status()
             return {"status": "success", "message": f"Model {model_name} deleted successfully"}
