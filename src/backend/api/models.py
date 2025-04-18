@@ -206,6 +206,7 @@ class MessageBase(BaseModel):
     message_type: MessageType
     rating: MessageRating = MessageRating.NONE
     voiceline_path: Optional[str] = None
+    prompt_path: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 class MessageCreate(MessageBase):

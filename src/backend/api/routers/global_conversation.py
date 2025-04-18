@@ -260,6 +260,21 @@ async def process_agent_global_response(
         # Build the prompt with TTS instructions, agent name, and RAG context for the global conversation
         prompt = build_global_prompt(user_message, agent_name, conversation_messages_json, agent_config, tts_instructions, rag_context)
         
+        message_uid = str(uuid.uuid4())
+        
+        # Save the prompt to a file
+        prompt_path = None
+        try:
+            prompt_dir = os.path.join(GLOBAL_CONVERSATION_DIR, "global")
+            os.makedirs(prompt_dir, exist_ok=True)
+            prompt_path = os.path.join(prompt_dir, f"prompt_{message_uid}.txt")
+            
+            with open(prompt_path, 'w', encoding='utf-8') as f:
+                f.write(prompt)
+            logger.info(f"Saved global conversation prompt to file: {prompt_path}")
+        except Exception as e:
+            logger.error(f"Failed to save global conversation prompt to file: {str(e)}")
+        
         # Generate response from LLM
         response_text = await generate_text(
             model=llm_config_json["model"],
@@ -274,8 +289,6 @@ async def process_agent_global_response(
             stop=llm_config_json.get("stop_sequences", [])
         )
         logger.info(f"Generated response from {agent_name} for global conversation")
-        
-        message_uid = str(uuid.uuid4())
         
         custom_voice_path = agent_config.get("custom_voice_path")
         if custom_voice_path:
@@ -325,6 +338,10 @@ async def process_agent_global_response(
             metadata["query_type"] = rag_result["query_type"]
             metadata["search_results_count"] = len(rag_result["search_results"])
         
+        # Add prompt path to metadata
+        if prompt_path:
+            metadata["prompt_path"] = prompt_path
+        
         # Add agent message to the global conversation
         agent_message = await add_message_to_global_conversation(
             content=response_text,
@@ -339,19 +356,23 @@ async def process_agent_global_response(
         # Add the stream URL to the response
         agent_message["audio_stream_url"] = audio_stream_url
         
-        # Update the message in the database with the audio_stream_url
+        # Update the message in the database with the audio_stream_url and prompt_path
         if db is not None:
             try:
+                update_fields = {"audio_stream_url": audio_stream_url}
+                if prompt_path:
+                    update_fields["prompt_path"] = prompt_path
+                
                 await db[GLOBAL_MESSAGE_COLLECTION].update_one(
                     {"message_uid": message_uid},
-                    {"$set": {"audio_stream_url": audio_stream_url}}
+                    {"$set": update_fields}
                 )
-                logger.info(f"Updated message {message_uid} with audio_stream_url in database")
+                logger.info(f"Updated message {message_uid} with audio_stream_url and prompt_path in database")
             except Exception as e:
                 logger.error(f"Failed to update message in database: {e}")
                 # Continue execution - this is not critical
         else:
-            logger.warning(f"Database connection not available, couldn't update message {message_uid} with audio_stream_url")
+            logger.warning(f"Database connection not available, couldn't update message {message_uid} with audio_stream_url and prompt_path")
         
         # Publish the agent's message to a message queue for websocket notifications
         if pubsub_client:

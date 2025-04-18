@@ -12,6 +12,8 @@ search:
   formats:
     - html
     - json
+  default_doi_resolver: "doi.org"
+  autocomplete: ""
 
 general:
   debug: false
@@ -26,9 +28,30 @@ ui:
 engines:
   - name: google
     shortcut: g
+    engine: google
+    use_mobile_ui: false
+    disabled: false
   - name: duckduckgo
     shortcut: d
+    engine: duckduckgo
+    disabled: false
   - name: bing
     shortcut: b
+    engine: bing
+    disabled: false
   - name: brave
-    shortcut: br 
+    shortcut: br
+    engine: brave
+    disabled: false
+  - name: qwant
+    shortcut: q
+    engine: qwant
+    disabled: false
+  - name: wikipedia
+    shortcut: w
+    engine: wikipedia
+    disabled: false
+  - name: yahoo
+    shortcut: y
+    engine: yahoo
+    disabled: false 

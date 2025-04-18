@@ -39,28 +39,41 @@ except OSError:
     nlp = spacy.load("en_core_web_sm")
     logger.info("Successfully downloaded and loaded spaCy en_core_web_sm model")
 
-# Define factual patterns targeted to truly factual questions
-FACTUAL_PATTERNS = [
-    r"^who (is|was|are|were|won)\b",
-    r"^what (is|was|are|were)\b.*\b(in|of|at|on|from|by|during|winner|largest|biggest|smallest|fastest|tallest|highest|lowest|oldest|newest|capital|population|distance|temperature|year|date|price)\b", 
-    r"^when (did|was|is|were|are)\b",
-    r"^where (is|was|are|were)\b",
-    r"^which (country|city|team|person|company|organization|player|year|book|movie|song|album)\b",
-    r"\b(won|winner|champion|victory|record|discover|invented|created|founded|established|built|born|died|located|capital|largest|tallest|deepest)\b.*\?",
-    r"\b(world cup|championship|tournament|competition|match|game|final)\b.*\b(winner|champion|score|result)\b",
-    r"\b(fifa|olympics|championship|league|cup)\b.*\b(winner|champion|gold|medal|trophy)\b"
+# Define query types
+class QueryType:
+    GENERAL = "general"
+    TRIVIA = "trivia"
+
+# Factual indicators that suggest a query is seeking specific facts
+FACTUAL_INDICATORS = {
+    "question_starters": [
+        "who", "what", "when", "where", "which", "how many", "how much"
+    ],
+    "verbs": [
+        "won", "invented", "discovered", "created", "founded", "built", "died", "born", 
+        "established", "located", "happened", "occurred", "began", "started", "ended",
+        "awarded", "directed", "starred", "published", "released", "launched"
+    ],
+    "nouns": [
+        "year", "date", "time", "place", "location", "person", "name", "capital", "population",
+        "height", "depth", "width", "distance", "temperature", "winner", "champion", "inventor",
+        "author", "director", "president", "ceo", "founder", "leader", "creator", "city",
+        "country", "record", "fact", "statistic", "percentage", "number", "amount", "score",
+        "result", "medal", "prize", "award", "title", "championship", "tournament", "event"
+    ]
+}
+
+# Words that indicate opinion-seeking, personal preference, or hypothetical scenarios
+OPINION_INDICATORS = [
+    "favorite", "best", "worst", "better", "worse", "greatest", "least",
+    "like", "love", "hate", "prefer", "recommend", "suggest", "advise",
+    "think", "feel", "believe", "opinion", "thought", "perspective", "view",
+    "imagine", "hypothetical", "pretend", "suppose", "consider", "if", "would",
+    "should", "could", "might", "may", "ideal", "perfect", "optimal",
+    "why do you", "how would you", "what do you think"
 ]
 
-# Define personal opinion patterns to exclude
-OPINION_PATTERNS = [
-    r"\b(favorite|best|worst|like|love|hate|think|feel|believe|opinion|recommend|suggest|advice|prefer|rather|instead)\b",
-    r"\byour\b.*(favorite|best|opinion|thought|recommendation|preference)",
-    r"\bhow (would|could|do|should)\b.*(you|your)",
-    r"\bif (you|your)\b",
-    r"\b(imagine|hypothetical|pretend)\b"
-]
-
-# Define greeting patterns to clean
+# Greeting and filler patterns to clean from queries
 GREETING_PATTERNS = [
     r"^(hey|hi|hello|ok|okay|yo|greetings|excuse me|good morning|good afternoon|good evening)\s+\w+\s*,?\s*",
     r"^(jarvis|morgan|pepper|assistant|chatbot|bot|there)\s*,?\s*",
@@ -68,21 +81,17 @@ GREETING_PATTERNS = [
     r"^(what about|how about|what if|by the way|anyway)\s+"
 ]
 
-# Define query types
-class QueryType:
-    GENERAL = "general"
-    TRIVIA = "trivia"
-
 async def analyze_query(query: str) -> Dict[str, Any]:
     """
-    Analyze a query to determine its type and extract important entities.
+    Analyzes a query using NLP techniques to determine if it's a trivia or general query.
+    
+    Trivia queries seek specific facts or information, while general queries are broader,
+    opinion-based, or seek explanations rather than specific facts.
     """
     logger.info(f"Analyzing query: {query}")
     
-    # Process with spaCy
     doc = nlp(query)
     
-    # Extract named entities
     entities = [
         {
             "text": ent.text,
@@ -93,7 +102,6 @@ async def analyze_query(query: str) -> Dict[str, Any]:
         for ent in doc.ents
     ]
     
-    # Clean the query by removing greetings first
     clean_query = query.lower()
     for pattern in GREETING_PATTERNS:
         clean_query = re.sub(pattern, "", clean_query, flags=re.IGNORECASE)
@@ -101,51 +109,72 @@ async def analyze_query(query: str) -> Dict[str, Any]:
     
     logger.debug(f"Query after greeting removal: {clean_query}")
     
-    # Check if it's an opinion-based question (exclude from RAG)
-    is_opinion = any(re.search(pattern, clean_query) for pattern in OPINION_PATTERNS)
-    
-    # If it's asking for opinions, we should NOT use RAG
-    if is_opinion:
-        logger.info(f"Query classified as opinion-based, not using RAG: {clean_query}")
-        return {
-            "query": query,
-            "query_type": QueryType.GENERAL,
-            "is_trivia": False,
-            "entities": entities,
-            "important_nouns": [],
-            "noun_chunks": [chunk.text for chunk in doc.noun_chunks]
-        }
-    
-    # Check for factual question patterns on cleaned query
-    is_trivia = any(re.search(pattern, clean_query) for pattern in FACTUAL_PATTERNS)
-    
-    # Extract important nouns for factual entity detection
+    # Extract linguistic features
     important_nouns = []
-    important_entity_types = ["PERSON", "ORG", "GPE", "LOC", "EVENT", "WORK_OF_ART", "FAC", "DATE", "PRODUCT"]
-    
-    # Include important nouns that aren't stopwords
-    for token in doc:
-        if token.pos_ == "NOUN" and not token.is_stop:
-            important_nouns.append(token.text)
-    
-    # If no pattern match but we have key entities from important categories, it might be a trivia query
-    if not is_trivia and entities:
-        for entity in entities:
-            if entity["label"] in important_entity_types:
-                # Check if this entity is in a sentence with a "?"
-                sentences = [sent.text for sent in doc.sents]
-                for sent in sentences:
-                    if entity["text"] in sent and "?" in sent:
-                        is_trivia = True
-                        break
-                if is_trivia:
-                    break
-    
-    # Extract noun chunks
+    important_verbs = []
     noun_chunks = [chunk.text for chunk in doc.noun_chunks]
     
-    # Determine query type
+    for token in doc:
+        if token.pos_ == "NOUN" and not token.is_stop:
+            important_nouns.append(token.text.lower())
+        elif token.pos_ == "VERB" and not token.is_stop:
+            important_verbs.append(token.text.lower())
+    
+    important_entity_types = ["PERSON", "ORG", "GPE", "LOC", "EVENT", "WORK_OF_ART", "FAC", "DATE", "PRODUCT", "CARDINAL", "ORDINAL", "MONEY", "QUANTITY"]
+    factual_entities = [entity for entity in entities if entity["label"] in important_entity_types]
+    
+    # Calculate scores for classification
+    factual_score = 0
+    
+    for starter in FACTUAL_INDICATORS["question_starters"]:
+        if clean_query.startswith(starter + " "):
+            factual_score += 2
+            break
+    
+    for verb in important_verbs:
+        if verb in FACTUAL_INDICATORS["verbs"]:
+            factual_score += 1.5
+    
+    for noun in important_nouns:
+        if noun in FACTUAL_INDICATORS["nouns"]:
+            factual_score += 1
+    
+    factual_score += len(factual_entities) * 1.5
+    
+    if "?" in query:
+        factual_score += 1
+    
+    # Opinion score calculation
+    opinion_score = 0
+    
+    for indicator in OPINION_INDICATORS:
+        if indicator in clean_query or re.search(r'\b' + re.escape(indicator) + r'\b', clean_query):
+            opinion_score += 2
+    
+    if re.search(r'\byou\b|\byour\b', clean_query):
+        opinion_score += 1
+    
+    if len(clean_query.split()) < 8 and factual_score > 0:
+        factual_score += 1
+    
+    if clean_query.startswith("why ") or "explain" in clean_query or "describe" in clean_query:
+        opinion_score += 1.5
+    
+    is_trivia = factual_score > opinion_score and factual_score >= 2
+    
+    # If there are clear opinion indicators, override
+    for strong_opinion in ["your opinion", "you think", "what do you", "would you"]:
+        if strong_opinion in clean_query:
+            is_trivia = False
+            break
+    
+    # If there are strong factual elements with specific entities, override
+    if len(factual_entities) >= 2 and "?" in query and not any(op in clean_query for op in ["your", "you think"]):
+        is_trivia = True
+    
     query_type = QueryType.TRIVIA if is_trivia else QueryType.GENERAL
+    
+    logger.info(f"Query analysis: factual_score={factual_score}, opinion_score={opinion_score}, is_trivia={is_trivia}")
     
     result = {
         "query": query,
@@ -153,10 +182,12 @@ async def analyze_query(query: str) -> Dict[str, Any]:
         "is_trivia": is_trivia,
         "entities": entities,
         "important_nouns": important_nouns,
-        "noun_chunks": noun_chunks
+        "noun_chunks": noun_chunks,
+        "factual_score": factual_score,
+        "opinion_score": opinion_score
     }
     
-    logger.info(f"Query analysis result: {result['query_type']} with {len(entities)} entities, is_trivia={is_trivia}")
+    logger.info(f"Query classified as {query_type} with {len(entities)} entities")
     
     return result
 
@@ -193,19 +224,11 @@ async def extract_search_terms(query: str, prev_search_terms: str = None) -> str
     is_follow_up = any(indicator in clean_query.lower().split() for indicator in follow_up_indicators) or \
                   any(ref in clean_query.lower().split() for ref in previous_context_references)
     
-    # Basic query cleaning
+    # Basic query cleaning - just remove the question mark, preserve question words
     cleaned_query = clean_query.rstrip('?').strip()
-    
-    # Only remove common question words from the beginning if needed
-    question_starters = ["who", "what", "when", "where", "why", "how", "did", "does", "do", "can", "could", "is", "are", "was", "were"]
-    for starter in question_starters:
-        if cleaned_query.lower().startswith(starter + " "):
-            cleaned_query = cleaned_query[len(starter)+1:].strip()
-            break
     
     # If the query is a follow-up and we have previous search terms
     if is_follow_up and prev_search_terms:
-        # Create a search query that combines previous context with current question
         combined_query = f"{prev_search_terms} {cleaned_query}"
         logger.info(f"Using combined search terms for follow-up question: {combined_query}")
         return combined_query
@@ -229,7 +252,7 @@ async def extract_search_terms(query: str, prev_search_terms: str = None) -> str
     
     # If the query is still long enough, use it as is
     if len(cleaned_query.split()) >= 2:
-        logger.info(f"Using simplified query as search terms: {cleaned_query}")
+        logger.info(f"Using complete query as search terms: {cleaned_query}")
         return cleaned_query
     
     # Fall back to original methods
