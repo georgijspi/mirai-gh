@@ -64,12 +64,22 @@ async def get_agent(agent_uid: str) -> Optional[Dict[str, Any]]:
     """Get agent configuration by ID."""
     db = get_database()
     agent = await db[AGENT_COLLECTION].find_one({"agent_uid": agent_uid})
+    
+    if agent and agent.get('profile_picture_path'):
+        agent['profile_picture_url'] = f"/agent/{agent_uid}/profile-picture"
+    
     return agent
 
 async def get_all_agents() -> List[Dict[str, Any]]:
     """Get all agent configurations."""
     db = get_database()
     agents = await db[AGENT_COLLECTION].find({}).to_list(length=100)
+    
+    # Add profile picture URLs for each agent without /mirai/api prefix
+    for agent in agents:
+        if agent.get('profile_picture_path'):
+            agent['profile_picture_url'] = f"/agent/{agent['agent_uid']}/profile-picture"
+    
     return agents
 
 async def update_agent(uid: str, update_data: Union[AgentUpdate, Dict[str, Any]]) -> Agent:
@@ -77,13 +87,10 @@ async def update_agent(uid: str, update_data: Union[AgentUpdate, Dict[str, Any]]
     logger.info(f"Updating agent with UID: {uid}")
     
     if isinstance(update_data, dict):
-        # Convert dict to AgentUpdate
         update_data = AgentUpdate(**update_data)
     
-    # Convert to dict and remove None values
     update_dict = update_data.dict(exclude_unset=True)
     
-    # Add last updated timestamp
     update_dict["updated_at"] = datetime.utcnow()
     
     # If there's nothing to update, just return the existing agent

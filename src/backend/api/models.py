@@ -181,6 +181,10 @@ class AgentResponse(AgentBase):
     agent_uid: str
     created_at: datetime
     updated_at: Optional[datetime] = None
+    profile_picture_url: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
 
 class AgentListResponse(BaseModel):
     """Response model for agent list."""

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi.responses import FileResponse
 import logging
 import os
 import shutil
@@ -237,4 +238,41 @@ async def delete_agent_by_id(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete agent: {str(e)}"
-        ) 
+        )
+
+@router.get("/{agent_uid}/profile-picture")
+async def get_profile_picture(
+    agent_uid: str,
+):
+    """Get an agent's profile picture."""
+    try:
+        agent = await get_agent(agent_uid)
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        
+        if not agent.get('profile_picture_path'):
+            raise HTTPException(status_code=404, detail="Agent does not have a profile picture")
+        
+        profile_filename = os.path.basename(agent['profile_picture_path'])
+        file_path = os.path.join(AGENT_DIR, agent_uid, profile_filename)
+        
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="Profile picture file not found")
+        
+        content_type = None
+        if file_path.lower().endswith('.jpg') or file_path.lower().endswith('.jpeg'):
+            content_type = "image/jpeg"
+        elif file_path.lower().endswith('.png'):
+            content_type = "image/png"
+        elif file_path.lower().endswith('.webp'):
+            content_type = "image/webp"
+        else:
+            content_type = "application/octet-stream"  # Default content type
+        
+        return FileResponse(file_path, media_type=content_type)
+    
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        logger.error(f"Error retrieving profile picture: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve profile picture: {str(e)}") 

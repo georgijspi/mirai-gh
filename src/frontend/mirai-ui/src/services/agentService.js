@@ -19,7 +19,21 @@ export const fetchAgents = async (includeArchived = false) => {
     if (!response.ok) {
       throw new Error("Failed to fetch agents");
     }
-    return await response.json();
+    
+    const data = await response.json();
+    
+    // Ensure profile_picture_url is the full URL
+    if (data.agents && data.agents.length > 0) {
+      data.agents = data.agents.map(agent => {
+        // If there's a profile_picture_url but it's a relative path, make it absolute
+        if (agent.profile_picture_url && !agent.profile_picture_url.startsWith('http')) {
+          agent.profile_picture_url = `${API_BASE_URL}${agent.profile_picture_url}`;
+        }
+        return agent;
+      });
+    }
+    
+    return data;
   } catch (error) {
     console.error("Error fetching agents:", error);
     throw error;
@@ -42,7 +56,15 @@ export const fetchAgentByUid = async (agentUid) => {
     if (!response.ok) {
       throw new Error("Failed to fetch agent");
     }
-    return await response.json();
+    
+    const agent = await response.json();
+    
+    // Ensure profile_picture_url is the full URL
+    if (agent.profile_picture_url && !agent.profile_picture_url.startsWith('http')) {
+      agent.profile_picture_url = `${API_BASE_URL}${agent.profile_picture_url}`;
+    }
+    
+    return agent;
   } catch (error) {
     console.error("Error fetching agent:", error);
     throw error;

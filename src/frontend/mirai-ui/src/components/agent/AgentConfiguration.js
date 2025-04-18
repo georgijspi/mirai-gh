@@ -11,6 +11,9 @@ import {
 import { fetchLLMConfigs } from "../../services/llmService";
 import AgentForm from "./AgentForm";
 
+// Add API_BASE_URL import
+const API_BASE_URL = "http://localhost:8005/mirai/api";
+
 const AgentConfiguration = () => {
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +36,18 @@ const AgentConfiguration = () => {
     try {
       setLoading(true);
       const data = await fetchAgents(false);
-      console.log("data", data);
+      console.log("Loaded agents data:", data);
+      
+      // Log agent picture information
+      if (data.agents && data.agents.length > 0) {
+        data.agents.forEach(agent => {
+          console.log(`Agent ${agent.name} (${agent.agent_uid}):`, {
+            profile_picture_path: agent.profile_picture_path,
+            profile_picture_url: agent.profile_picture_url
+          });
+        });
+      }
+      
       setAgents(data.agents || []);
       setLoading(false);
     } catch (err) {
@@ -288,31 +302,90 @@ const AgentConfiguration = () => {
         {agents.map((agent) => (
           <div
             key={agent.agent_uid}
-            className="bg-white shadow-md rounded-lg p-4 border border-gray-200"
+            className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow duration-300"
           >
-            <div className="flex justify-between items-start">
-              <h3 className="text-lg font-semibold">{agent.name}</h3>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => startEditingAgent(agent.agent_uid)}
-                  className="text-blue-500 hover:text-blue-700"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => deleteAgent(agent.agent_uid)}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  Delete
-                </button>
-              </div>
+            {/* Profile picture section */}
+            <div className="w-full h-48 bg-gray-100 flex items-center justify-center overflow-hidden">
+              {agent.profile_picture_url ? (
+                <div className="w-32 h-32 rounded-3xl overflow-hidden flex items-center justify-center bg-blue-500">
+                  <img
+                    src={agent.profile_picture_url}
+                    alt={`${agent.name}'s profile`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      console.error(`Failed to load image from ${agent.profile_picture_url}`);
+                      e.target.onerror = null;
+                      e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect x='10' y='10' width='80' height='80' rx='20' fill='%234299e1'/%3E%3Ctext x='50' y='65' font-family='Arial' font-size='50' fill='white' text-anchor='middle'%3E" + agent.name.charAt(0).toUpperCase() + "%3C/text%3E%3C/svg%3E";
+                    }}
+                  />
+                </div>
+              ) : agent.profile_picture_path ? (
+                <div className="w-32 h-32 rounded-3xl overflow-hidden flex items-center justify-center bg-blue-500">
+                  <img
+                    src={`${API_BASE_URL}/agent/${agent.agent_uid}/profile-picture`}
+                    alt={`${agent.name}'s profile`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      console.error(`Failed to load image from direct endpoint for ${agent.name}`);
+                      e.target.onerror = null;
+                      e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect x='10' y='10' width='80' height='80' rx='20' fill='%234299e1'/%3E%3Ctext x='50' y='65' font-family='Arial' font-size='50' fill='white' text-anchor='middle'%3E" + agent.name.charAt(0).toUpperCase() + "%3C/text%3E%3C/svg%3E";
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="w-32 h-32 rounded-3xl bg-blue-500 flex items-center justify-center text-white text-4xl font-bold shadow-md">
+                  {agent.name.charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
-            <p className="text-gray-600 mt-2 line-clamp-3">
-              {agent.personality_prompt}
-            </p>
-            <div className="mt-4 text-sm text-gray-500">
-              <p>Voice: {agent.voice_speaker || "Default"}</p>
-              <p>LLM Config: {agent.llm_config_uid}</p>
+            
+            {/* Agent info section */}
+            <div className="p-4">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-xl font-bold text-gray-800">{agent.name}</h3>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => startEditingAgent(agent.agent_uid)}
+                    className="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => deleteAgent(agent.agent_uid)}
+                    className="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+              
+              <div className="text-gray-600 mt-2 mb-4 line-clamp-3 h-18 overflow-hidden">
+                {agent.personality_prompt}
+              </div>
+              
+              <div className="mt-4 pt-3 border-t border-gray-200 text-sm text-gray-500 grid grid-cols-2 gap-2">
+                <div className="flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                  <span>Voice: {agent.voice_speaker || "Default"}</span>
+                </div>
+                <div className="flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  <span className="truncate">LLM: {agent.llm_config_uid.substring(0, 8)}...</span>
+                </div>
+                
+                {agent.custom_voice_path && (
+                  <div className="col-span-2 flex items-center mt-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-green-500">Custom voice available</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         ))}
