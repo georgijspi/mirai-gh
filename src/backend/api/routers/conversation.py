@@ -39,16 +39,16 @@ from ..services.llm_service import get_llm_config, generate_text
 from ..services.tts_service import generate_voice
 from promptBuilderModule.prompt_builder import PromptBuilder
 from ..database import db, pubsub_client
+from ..services.rag_service import augment_conversation_context
 
 logger = logging.getLogger(__name__)
 
 # Directory structure for data
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "..", "data")
 CONVERSATION_DIR = os.path.join(DATA_DIR, "conversation")
-# Ensure directory exists
+
 os.makedirs(CONVERSATION_DIR, exist_ok=True)
 
-# Collection name for messages
 MESSAGE_COLLECTION = "messages"
 
 router = APIRouter(prefix="/conversation", tags=["Conversation"])
@@ -61,18 +61,21 @@ class JSONEncoder(json.JSONEncoder):
             return o.isoformat()
         return super().default(o)
 
-def build_prompt(user_message: str, conversation_messages: List[Dict[str, Any]], agent_config: Dict[str, Any], tts_instructions: Optional[str] = None) -> str:
+def build_prompt(user_message: str, conversation_messages: List[Dict[str, Any]], agent_config: Dict[str, Any], tts_instructions: Optional[str] = None, rag_context: Optional[str] = None) -> str:
     """Build a prompt for the LLM using the conversation history and agent personality."""
     # Serialize agent_config using json_util
     agent_config_bson = json_util.dumps(agent_config)
     agent_config_json = json.loads(agent_config_bson)
     
-    # Use the PromptBuilder to create a prompt
+    # Limit conversation history to last 6 messages to keep the context focused
+    recent_messages = conversation_messages[-6:] if len(conversation_messages) > 6 else conversation_messages
+    
     return PromptBuilder.create_prompt(
         personality_prompt=agent_config_json["personality_prompt"],
-        messages=conversation_messages,
+        messages=recent_messages,
         current_message=user_message,
-        tts_instructions=tts_instructions
+        tts_instructions=tts_instructions,
+        rag_context=rag_context
     )
 
 @router.post("", response_model=ConversationResponse, status_code=status.HTTP_201_CREATED)
@@ -88,7 +91,7 @@ async def create_new_conversation(
         # Get the agent_uid from request
         agent_uid = conv_data.agent_uid
         
-        # Pass title to create_conversation (which now handles None values)
+        # Pass title to create_conversation
         title = conv_data.title if hasattr(conv_data, 'title') and conv_data.title else None
         
         conversation = await create_conversation(
@@ -259,7 +262,6 @@ async def send_message(
         # Get user ID from current user
         user_uid = current_user.get("user_uid") if isinstance(current_user, dict) else current_user.user_uid
         
-        # Log the incoming request with conversation_uid
         logger.info(f"Received message request for conversation: {message_data.conversation_uid}")
         
         # Validate conversation
@@ -271,7 +273,6 @@ async def send_message(
                 detail="Conversation not found"
             )
         
-        # Log the actual conversation data from DB to confirm conversation_uid
         logger.info(f"Found conversation in DB with uid: {conversation.get('conversation_uid')}")
         
         # Check if the conversation belongs to the current user
@@ -303,7 +304,6 @@ async def send_message(
         # Start response time tracking
         start_time = time.time()
         
-        # Make sure to use the conversation_uid from database to ensure consistency
         conversation_uid = conversation["conversation_uid"]
         
         # Add user message to the conversation
@@ -317,8 +317,7 @@ async def send_message(
         # Get conversation history
         conversation_messages = await get_conversation_messages(conversation_uid)
         
-        # Process the message and generate a response
-        # Use a background task for the agent response to avoid blocking
+        # Process the message and generate a response using a background task to avoid blocking
         logger.info(f"Starting background task for conversation: {conversation_uid}")
         background_tasks.add_task(
             process_agent_response,
@@ -359,14 +358,12 @@ async def process_agent_response(
         if conversation_messages is None:
             conversation_messages = await get_conversation_messages(conversation_uid)
         
-        # Format messages for prompt
         agent_config = await get_agent(agent_uid)
         
-        # Properly serialize MongoDB documents using json_util
+        # Serialize MongoDB documents using json_util
         conversation_messages_bson = json_util.dumps(conversation_messages)
         conversation_messages_json = json.loads(conversation_messages_bson)
         
-        # Get LLM config for the agent
         llm_config = await get_llm_config(agent_config["llm_config_uid"])
         if not llm_config:
             logger.error(f"LLM config not found for agent: {agent_config['name']}")
@@ -382,8 +379,60 @@ async def process_agent_response(
         # Get TTS instructions from LLM config
         tts_instructions = llm_config_json.get("tts_instructions")
         
-        # Build the prompt with TTS instructions
-        prompt = build_prompt(user_message, conversation_messages_json, agent_config, tts_instructions)
+        # Augment context with RAG if needed
+        rag_result = await augment_conversation_context(conversation_messages_json, user_message)
+        rag_context = None
+
+        if rag_result["rag_applied"] and rag_result["system_message"]:
+            rag_context = rag_result["system_message"]["content"]
+            logger.info(f"RAG applied to query: {user_message}")
+            
+            metadata = {
+                "rag_applied": True,
+                "query_type": rag_result["query_type"],
+                "search_results_count": len(rag_result["search_results"])
+            }
+            
+            # Update the user message with RAG metadata
+            try:
+                message_uid = None
+                # Find the most recent user message with matching content
+                for message in reversed(conversation_messages_json):
+                    if message.get("message_type") == MessageType.USER and message.get("content") == user_message:
+                        message_uid = message.get("message_uid")
+                        break
+                
+                if message_uid and db is not None:
+                    await db[MESSAGE_COLLECTION].update_one(
+                        {"message_uid": message_uid},
+                        {"$set": {"metadata": metadata}}
+                    )
+                    logger.info(f"Updated message {message_uid} with RAG metadata")
+                else:
+                    logger.warning(
+                        f"Could not update RAG metadata: " + 
+                        ("Message UID not found" if not message_uid else "Database connection unavailable")
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to update message with RAG metadata: {str(e)}")
+        
+        prompt = build_prompt(user_message, conversation_messages_json, agent_config, tts_instructions, rag_context)
+        
+        # Generate a message uid
+        message_uid = str(uuid.uuid4())
+        
+        # Save the prompt to a file
+        prompt_path = None
+        try:
+            prompt_dir = os.path.join(CONVERSATION_DIR, conversation_uid)
+            os.makedirs(prompt_dir, exist_ok=True)
+            prompt_path = os.path.join(prompt_dir, f"prompt_{message_uid}.txt")
+            
+            with open(prompt_path, 'w', encoding='utf-8') as f:
+                f.write(prompt)
+            logger.info(f"Saved prompt to file: {prompt_path}")
+        except Exception as e:
+            logger.error(f"Failed to save prompt to file: {str(e)}")
         
         # Generate response from LLM
         response_text = await generate_text(
@@ -400,22 +449,24 @@ async def process_agent_response(
         )
         logger.info(f"Generated response for conversation: {conversation_uid}")
         
-        # Generate a unique ID for the message
-        message_uid = str(uuid.uuid4())
-        
-        # Log before calling generate_voice to confirm the conversation_uid
         logger.info(f"Generating voice for message_uid: {message_uid} in conversation: {conversation_uid}")
         
-        # Generate voice for the response
+        # Get custom voice path if exists
+        custom_voice_path = agent_config.get("custom_voice_path")
+        if custom_voice_path:
+            logger.info(f"Agent has custom voice path: {custom_voice_path}")
+        
+        # Generate wav for the response
         voice_path, audio_duration = await generate_voice(
             text=response_text,
             voice_speaker=agent_config["voice_speaker"],
             message_uid=message_uid,
-            conversation_uid=conversation_uid
+            conversation_uid=conversation_uid,
+            custom_voice_path=custom_voice_path
         )
         logger.info(f"Generated voice at path: {voice_path}")
         
-        # Calculate response time - MOVED HERE to include TTS generation time
+        # Calculate response time
         response_time = None
         if start_time:
             response_time = time.time() - start_time
@@ -424,12 +475,19 @@ async def process_agent_response(
         # Generate a stream URL for the audio
         audio_stream_url = f"/mirai/api/tts/stream/{message_uid}?conversation_uid={conversation_uid}"
         
-        # Add metadata
         metadata = {}
         if response_time:
             metadata["response_time"] = f"{response_time:.2f}"
         if audio_duration:
             metadata["audio_duration"] = f"{audio_duration:.2f}"
+        
+        if rag_context:
+            metadata["rag_applied"] = True
+            metadata["query_type"] = rag_result["query_type"]
+        
+        # Add prompt path to metadata
+        if prompt_path:
+            metadata["prompt_path"] = prompt_path
         
         # Add the agent response to the conversation
         agent_message = await add_message(
@@ -446,27 +504,29 @@ async def process_agent_response(
         # Add the stream URL to the response
         agent_message["audio_stream_url"] = audio_stream_url
         
-        # Update the message in the database with the audio_stream_url
+        # Update the message in the database with the audio_stream_url and prompt_path
         if db is not None:
             try:
+                update_fields = {"audio_stream_url": audio_stream_url}
+                if prompt_path:
+                    update_fields["prompt_path"] = prompt_path
+                
                 await db[MESSAGE_COLLECTION].update_one(
                     {"message_uid": message_uid},
-                    {"$set": {"audio_stream_url": audio_stream_url}}
+                    {"$set": update_fields}
                 )
-                logger.info(f"Updated message {message_uid} with audio_stream_url in database")
+                logger.info(f"Updated message {message_uid} with audio_stream_url and prompt_path in database")
             except Exception as e:
                 logger.error(f"Failed to update message in database: {e}")
                 # Continue execution - this is not critical
         else:
-            logger.warning(f"Database connection not available, couldn't update message {message_uid} with audio_stream_url")
+            logger.warning(f"Database connection not available, couldn't update message {message_uid} with audio_stream_url and prompt_path")
         
         logger.info(f"Agent response added to conversation: {conversation_uid}")
         
         # Publish the agent's message to a message queue for websocket notifications
-        # This allows the frontend to know when to start playing the audio
         if pubsub_client:
             try:
-                # Create a simplified version of the message that's guaranteed to be JSON serializable
                 serializable_message = {
                     "type": "agent_response",
                     "message": {

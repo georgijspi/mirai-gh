@@ -1,4 +1,4 @@
-.PHONY: install start clean help db-up db-down dev-mode ollama-up ollama-down
+.PHONY: install start clean help db-up db-down dev-mode ollama-up ollama-down searx-up searx-down
 
 # Default target
 .DEFAULT_GOAL := help
@@ -13,6 +13,8 @@ help:
 	@echo "  make db-down      Stop MongoDB Docker container"
 	@echo "  make ollama-up    Start Ollama LLM container with CUDA support"
 	@echo "  make ollama-down  Stop Ollama LLM container"
+	@echo "  make searx-up     Start SearXNG search engine container"
+	@echo "  make searx-down   Stop SearXNG search engine container"
 	@echo "  make dev-mode     Start server in development mode (no auth required)"
 	@echo "  make clean        Clean up temporary files and virtual environment"
 	@echo ""
@@ -47,6 +49,16 @@ ollama-down:
 	@echo ">>> Stopping Ollama Docker container..."
 	@cd docker && docker compose stop ollama
 	@echo ">>> Ollama stopped"
+
+searx-up:
+	@echo ">>> Starting SearXNG search engine..."
+	@cd docker && docker compose up -d searxng redis
+	@echo ">>> SearXNG started on port 8080"
+
+searx-down:
+	@echo ">>> Stopping SearXNG Docker container..."
+	@cd docker && docker compose stop searxng redis
+	@echo ">>> SearXNG stopped"
 
 dev-mode:
 	@echo ">>> Starting FastAPI server in development mode (no auth required)..."

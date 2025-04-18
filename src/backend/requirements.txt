@@ -13,3 +13,12 @@ pymongo
 email-validator
 httpx
 websockets>=10.4
+# NLP dependencies
+spacy>=3.7.0
+nltk>=3.8.1
+en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.0/en_core_web_sm-3.7.0-py3-none-any.whl
+# Search dependencies
+# No searx package needed - using aiohttp to communicate with SearXNG directly
+# Web search
+aiohttp>=3.9.0
+beautifulsoup4>=4.12.0

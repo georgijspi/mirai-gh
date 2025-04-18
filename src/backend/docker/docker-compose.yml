@@ -23,7 +23,41 @@ services:
     runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
+      
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - BASE_URL=http://localhost:8080/
+      - INSTANCE_NAME=MirAI SearXNG
+      - AUTOCOMPLETE=google
+      - REDIS_URL=redis://redis:6379/0
+      - UWSGI_WORKERS=4
+      - SEARXNG_API_DISABLED=false
+      - SEARXNG_SETTINGS_PATH=/etc/searxng/settings.yml
+      - SEARXNG_FORMAT_ENABLED=html,csv,json,rss
+      - SEARXNG_UI_DEFAULT_THEME=simple
+      - SEARXNG_UI_STATIC_USE_HASH=false
+      - SEARXNG_SERVER_LIMITER=false
+      - SEARXNG_SERVER_SECRET_KEY=MirAI-SearchEngine-Key
+    volumes:
+      - searxng_data:/etc/searxng
+      - ./searxng_config/settings.yml:/etc/searxng/settings.yml
+    depends_on:
+      - redis
+      
+  redis:
+    image: redis:alpine
+    container_name: redis
+    restart: always
+    volumes:
+      - redis_data:/data
 
 volumes:
   mongodb_data:
-  ollama_data: 
+  ollama_data:
+  searxng_data:
+  redis_data: 
