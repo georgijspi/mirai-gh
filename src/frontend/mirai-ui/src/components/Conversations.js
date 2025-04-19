@@ -177,7 +177,13 @@ const Conversations = () => {
                   >
                     <div className="flex items-center mb-2">
                       <div className="w-12 h-12 rounded-full bg-gray-500 mr-3 overflow-hidden">
-                        {agent.profile_picture_path ? (
+                        {agent.profile_picture_url ? (
+                          <img
+                            src={agent.profile_picture_url}
+                            alt={agent.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : agent.profile_picture_path ? (
                           <img
                             src={`${API_BASE_URL}${agent.profile_picture_path}`}
                             alt={agent.name}
