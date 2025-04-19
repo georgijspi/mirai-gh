@@ -226,7 +226,7 @@ const AgentConfiguration = () => {
     if (window.confirm("Are you sure you want to delete this agent?")) {
       try {
         await archiveAgent(agentUid);
-        setAgents(agents.filter((agent) => agent.agent_uid !== agentUid));
+        await loadAgents();
       } catch (err) {
         console.error("Error deleting agent:", err);
         setError("Failed to delete agent. Please try again.");
