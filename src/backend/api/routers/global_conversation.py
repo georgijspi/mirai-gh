@@ -37,7 +37,10 @@ logger = logging.getLogger(__name__)
 
 # Directory structure for data
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "..", "data")
-GLOBAL_CONVERSATION_DIR = os.path.join(DATA_DIR, "global_conversation")
+CONVERSATION_DIR = os.path.join(DATA_DIR, "conversation")
+GLOBAL_CONVERSATION_DIR = os.path.join(CONVERSATION_DIR, "global")
+os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(CONVERSATION_DIR, exist_ok=True)
 os.makedirs(GLOBAL_CONVERSATION_DIR, exist_ok=True)
 
 # Collection name for global messages
@@ -265,9 +268,8 @@ async def process_agent_global_response(
         # Save the prompt to a file
         prompt_path = None
         try:
-            prompt_dir = os.path.join(GLOBAL_CONVERSATION_DIR, "global")
-            os.makedirs(prompt_dir, exist_ok=True)
-            prompt_path = os.path.join(prompt_dir, f"prompt_{message_uid}.txt")
+            os.makedirs(GLOBAL_CONVERSATION_DIR, exist_ok=True)
+            prompt_path = os.path.join(GLOBAL_CONVERSATION_DIR, f"prompt_{message_uid}.txt")
             
             with open(prompt_path, 'w', encoding='utf-8') as f:
                 f.write(prompt)

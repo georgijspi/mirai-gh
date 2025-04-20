@@ -17,8 +17,11 @@ GLOBAL_MESSAGE_COLLECTION = "global_messages"
 
 # Directory structure for data
 DATA_DIR = os.path.join(os.getcwd(), "..", "data")
-GLOBAL_CONVERSATION_DIR = os.path.join(DATA_DIR, "global_conversation")
+# Change the directory to use conversation/global path
+CONVERSATION_DIR = os.path.join(DATA_DIR, "conversation")
+GLOBAL_CONVERSATION_DIR = os.path.join(CONVERSATION_DIR, "global")
 os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(CONVERSATION_DIR, exist_ok=True)
 os.makedirs(GLOBAL_CONVERSATION_DIR, exist_ok=True)
 
 # Global conversation ID - We only have one global conversation
