@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
+import { API_BASE_URL } from "./APIModuleConfig";
+import { fetchAgents } from "../services/agentService";
 import {
-  API_BASE_URL,
-  CONVERSATION_ENDPOINTS,
-  AGENT_ENDPOINTS,
-  fetchAPI,
-} from "./APIModuleConfig";
+  fetchConversations,
+  createConversation as createConversationService,
+} from "../services/conversationService";
 import ConversationDetail from "./ConversationDetail";
 
 const Conversations = () => {
@@ -26,7 +26,7 @@ const Conversations = () => {
   const loadConversations = async () => {
     try {
       setLoading(true);
-      const response = await fetchAPI(CONVERSATION_ENDPOINTS.LIST);
+      const response = await fetchConversations();
       setConversations(response.conversations || []);
     } catch (err) {
       setError(`Failed to load conversations: ${err.message}`);
@@ -40,7 +40,8 @@ const Conversations = () => {
   const handleNewConversation = async () => {
     try {
       setLoadingAgents(true);
-      const response = await fetchAPI(AGENT_ENDPOINTS.LIST);
+      // Use the fetchAgents function from agentService instead of direct API call
+      const response = await fetchAgents(false); // Don't include archived agents
       setAgents(response.agents || []);
       setShowNewConversationModal(true);
     } catch (err) {
@@ -55,10 +56,7 @@ const Conversations = () => {
   const createConversation = async (agentUid) => {
     try {
       setLoading(true);
-      const response = await fetchAPI(CONVERSATION_ENDPOINTS.CREATE, {
-        method: "POST",
-        body: JSON.stringify({ agent_uid: agentUid }),
-      });
+      const response = await createConversationService(agentUid);
 
       // Close modal and reload conversations
       setShowNewConversationModal(false);
@@ -189,7 +187,13 @@ const Conversations = () => {
                   >
                     <div className="flex items-center mb-2">
                       <div className="w-12 h-12 rounded-full bg-gray-500 mr-3 overflow-hidden">
-                        {agent.profile_picture_path ? (
+                        {agent.profile_picture_url ? (
+                          <img
+                            src={agent.profile_picture_url}
+                            alt={agent.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : agent.profile_picture_path ? (
                           <img
                             src={`${API_BASE_URL}${agent.profile_picture_path}`}
                             alt={agent.name}

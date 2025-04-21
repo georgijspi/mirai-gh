@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   API_BASE_URL,
-  CONVERSATION_ENDPOINTS,
   WS_BASE_URL,
   WS_ENDPOINTS,
-  fetchAPI,
   TTS_ENDPOINTS,
 } from "./APIModuleConfig";
 import { WebSocketManager, playMessageAudio } from "../utils/audioUtils";
+import {
+  fetchConversationById,
+  sendMessage as sendMessageService,
+} from "../services/conversationService";
 
 const ConversationDetail = ({ conversationId, onBack }) => {
   const [conversation, setConversation] = useState(null);
@@ -43,9 +45,7 @@ const ConversationDetail = ({ conversationId, onBack }) => {
   const loadConversation = async () => {
     try {
       setLoading(true);
-      const response = await fetchAPI(
-        CONVERSATION_ENDPOINTS.GET(conversationId)
-      );
+      const response = await fetchConversationById(conversationId);
       setConversation(response);
       setMessages(response.messages || []);
     } catch (err) {
@@ -135,13 +135,10 @@ const ConversationDetail = ({ conversationId, onBack }) => {
       // Clear input field
       setInput("");
 
-      // Send message to API
-      await fetchAPI(CONVERSATION_ENDPOINTS.SEND_MESSAGE, {
-        method: "POST",
-        body: JSON.stringify({
-          content: input,
-          conversation_uid: conversationId,
-        }),
+      // Send message to API using the service
+      await sendMessageService({
+        content: input,
+        conversation_uid: conversationId,
       });
 
       console.log("Message sent successfully");
