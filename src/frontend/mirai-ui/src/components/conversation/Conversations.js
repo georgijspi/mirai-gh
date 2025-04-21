@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { 
-  API_BASE_URL, 
-  CONVERSATION_ENDPOINTS, 
-  AGENT_ENDPOINTS,
-  fetchAPI
-} from "./APIModuleConfig";
+import { API_BASE_URL } from "../APIModuleConfig";
+import { fetchAgents } from "../../services/agentService";
+import {
+  fetchConversations,
+  createConversation as createConversationService,
+} from "../../services/conversationService";
 import ConversationDetail from "./ConversationDetail";
 
 const Conversations = () => {
@@ -12,71 +12,66 @@ const Conversations = () => {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showNewConversationModal, setShowNewConversationModal] = useState(false);
+  const [showNewConversationModal, setShowNewConversationModal] =
+    useState(false);
   const [agents, setAgents] = useState([]);
   const [loadingAgents, setLoadingAgents] = useState(false);
 
-  // Fetch conversations on component mount
   useEffect(() => {
     loadConversations();
   }, []);
 
-  // Load user conversations
   const loadConversations = async () => {
     try {
       setLoading(true);
-      const response = await fetchAPI(CONVERSATION_ENDPOINTS.LIST);
+      const response = await fetchConversations();
       setConversations(response.conversations || []);
     } catch (err) {
       setError(`Failed to load conversations: ${err.message}`);
-      console.error('Error loading conversations:', err);
+      console.error("Error loading conversations:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Load agents when modal is opened
   const handleNewConversation = async () => {
     try {
       setLoadingAgents(true);
-      const response = await fetchAPI(AGENT_ENDPOINTS.LIST);
+      const response = await fetchAgents(false); // Doesn't included archived agents
       setAgents(response.agents || []);
       setShowNewConversationModal(true);
     } catch (err) {
       setError(`Failed to load agents: ${err.message}`);
-      console.error('Error loading agents:', err);
+      console.error("Error loading agents:", err);
     } finally {
       setLoadingAgents(false);
     }
   };
 
-  // Create new conversation with selected agent
   const createConversation = async (agentUid) => {
     try {
       setLoading(true);
-      const response = await fetchAPI(CONVERSATION_ENDPOINTS.CREATE, {
-        method: 'POST',
-        body: JSON.stringify({ agent_uid: agentUid })
-      });
-      
-      // Close modal and reload conversations
+      const response = await createConversationService(agentUid);
+
       setShowNewConversationModal(false);
       await loadConversations();
-      
-      // Select the newly created conversation
+
       setSelectedConversation(response.conversation_uid);
     } catch (err) {
       setError(`Failed to create conversation: ${err.message}`);
-      console.error('Error creating conversation:', err);
+      console.error("Error creating conversation:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Format date for display
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return (
+      date.toLocaleDateString() +
+      " " +
+      date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    );
   };
 
   return (
@@ -97,10 +92,7 @@ const Conversations = () => {
         {error && (
           <div className="bg-red-500 text-white p-2 rounded mb-4">
             {error}
-            <button
-              className="ml-2 font-bold"
-              onClick={() => setError(null)}
-            >
+            <button className="ml-2 font-bold" onClick={() => setError(null)}>
               ×
             </button>
           </div>
@@ -108,7 +100,9 @@ const Conversations = () => {
 
         {/* Conversations list */}
         {loading ? (
-          <div className="text-center text-gray-400 py-10">Loading conversations...</div>
+          <div className="text-center text-gray-400 py-10">
+            Loading conversations...
+          </div>
         ) : conversations.length === 0 ? (
           <div className="text-center text-gray-400 py-10">
             No conversations yet. Start a new one!
@@ -123,11 +117,17 @@ const Conversations = () => {
                     ? "bg-gray-600"
                     : "bg-gray-700 hover:bg-gray-600"
                 }`}
-                onClick={() => setSelectedConversation(conversation.conversation_uid)}
+                onClick={() =>
+                  setSelectedConversation(conversation.conversation_uid)
+                }
               >
-                <div className="font-medium text-white">{conversation.title}</div>
+                <div className="font-medium text-white">
+                  {conversation.title}
+                </div>
                 <div className="text-sm text-gray-400">
-                  {formatDate(conversation.updated_at || conversation.created_at)}
+                  {formatDate(
+                    conversation.updated_at || conversation.created_at
+                  )}
                 </div>
               </li>
             ))}
@@ -138,8 +138,8 @@ const Conversations = () => {
       {/* Conversation Detail Panel */}
       <div className="w-2/3 p-4">
         {selectedConversation ? (
-          <ConversationDetail 
-            conversationId={selectedConversation} 
+          <ConversationDetail
+            conversationId={selectedConversation}
             onBack={() => setSelectedConversation(null)}
           />
         ) : (
@@ -164,9 +164,11 @@ const Conversations = () => {
                 ×
               </button>
             </div>
-            
+
             {loadingAgents ? (
-              <div className="text-center text-gray-400 py-10">Loading agents...</div>
+              <div className="text-center text-gray-400 py-10">
+                Loading agents...
+              </div>
             ) : (
               <div className="grid grid-cols-2 gap-4">
                 {agents.map((agent) => (
@@ -213,4 +215,4 @@ const Conversations = () => {
   );
 };
 
-export default Conversations; 
+export default Conversations;
