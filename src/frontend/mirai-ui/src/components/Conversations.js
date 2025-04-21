@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { 
-  API_BASE_URL, 
-  CONVERSATION_ENDPOINTS, 
+import {
+  API_BASE_URL,
+  CONVERSATION_ENDPOINTS,
   AGENT_ENDPOINTS,
-  fetchAPI
+  fetchAPI,
 } from "./APIModuleConfig";
 import ConversationDetail from "./ConversationDetail";
 
@@ -12,7 +12,8 @@ const Conversations = () => {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showNewConversationModal, setShowNewConversationModal] = useState(false);
+  const [showNewConversationModal, setShowNewConversationModal] =
+    useState(false);
   const [agents, setAgents] = useState([]);
   const [loadingAgents, setLoadingAgents] = useState(false);
 
@@ -29,7 +30,7 @@ const Conversations = () => {
       setConversations(response.conversations || []);
     } catch (err) {
       setError(`Failed to load conversations: ${err.message}`);
-      console.error('Error loading conversations:', err);
+      console.error("Error loading conversations:", err);
     } finally {
       setLoading(false);
     }
@@ -44,7 +45,7 @@ const Conversations = () => {
       setShowNewConversationModal(true);
     } catch (err) {
       setError(`Failed to load agents: ${err.message}`);
-      console.error('Error loading agents:', err);
+      console.error("Error loading agents:", err);
     } finally {
       setLoadingAgents(false);
     }
@@ -55,19 +56,19 @@ const Conversations = () => {
     try {
       setLoading(true);
       const response = await fetchAPI(CONVERSATION_ENDPOINTS.CREATE, {
-        method: 'POST',
-        body: JSON.stringify({ agent_uid: agentUid })
+        method: "POST",
+        body: JSON.stringify({ agent_uid: agentUid }),
       });
-      
+
       // Close modal and reload conversations
       setShowNewConversationModal(false);
       await loadConversations();
-      
+
       // Select the newly created conversation
       setSelectedConversation(response.conversation_uid);
     } catch (err) {
       setError(`Failed to create conversation: ${err.message}`);
-      console.error('Error creating conversation:', err);
+      console.error("Error creating conversation:", err);
     } finally {
       setLoading(false);
     }
@@ -76,7 +77,11 @@ const Conversations = () => {
   // Format date for display
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return (
+      date.toLocaleDateString() +
+      " " +
+      date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    );
   };
 
   return (
@@ -97,10 +102,7 @@ const Conversations = () => {
         {error && (
           <div className="bg-red-500 text-white p-2 rounded mb-4">
             {error}
-            <button
-              className="ml-2 font-bold"
-              onClick={() => setError(null)}
-            >
+            <button className="ml-2 font-bold" onClick={() => setError(null)}>
               ×
             </button>
           </div>
@@ -108,7 +110,9 @@ const Conversations = () => {
 
         {/* Conversations list */}
         {loading ? (
-          <div className="text-center text-gray-400 py-10">Loading conversations...</div>
+          <div className="text-center text-gray-400 py-10">
+            Loading conversations...
+          </div>
         ) : conversations.length === 0 ? (
           <div className="text-center text-gray-400 py-10">
             No conversations yet. Start a new one!
@@ -123,11 +127,17 @@ const Conversations = () => {
                     ? "bg-gray-600"
                     : "bg-gray-700 hover:bg-gray-600"
                 }`}
-                onClick={() => setSelectedConversation(conversation.conversation_uid)}
+                onClick={() =>
+                  setSelectedConversation(conversation.conversation_uid)
+                }
               >
-                <div className="font-medium text-white">{conversation.title}</div>
+                <div className="font-medium text-white">
+                  {conversation.title}
+                </div>
                 <div className="text-sm text-gray-400">
-                  {formatDate(conversation.updated_at || conversation.created_at)}
+                  {formatDate(
+                    conversation.updated_at || conversation.created_at
+                  )}
                 </div>
               </li>
             ))}
@@ -138,8 +148,8 @@ const Conversations = () => {
       {/* Conversation Detail Panel */}
       <div className="w-2/3 p-4">
         {selectedConversation ? (
-          <ConversationDetail 
-            conversationId={selectedConversation} 
+          <ConversationDetail
+            conversationId={selectedConversation}
             onBack={() => setSelectedConversation(null)}
           />
         ) : (
@@ -164,9 +174,11 @@ const Conversations = () => {
                 ×
               </button>
             </div>
-            
+
             {loadingAgents ? (
-              <div className="text-center text-gray-400 py-10">Loading agents...</div>
+              <div className="text-center text-gray-400 py-10">
+                Loading agents...
+              </div>
             ) : (
               <div className="grid grid-cols-2 gap-4">
                 {agents.map((agent) => (
@@ -177,13 +189,7 @@ const Conversations = () => {
                   >
                     <div className="flex items-center mb-2">
                       <div className="w-12 h-12 rounded-full bg-gray-500 mr-3 overflow-hidden">
-                        {agent.profile_picture_url ? (
-                          <img
-                            src={agent.profile_picture_url}
-                            alt={agent.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : agent.profile_picture_path ? (
+                        {agent.profile_picture_path ? (
                           <img
                             src={`${API_BASE_URL}${agent.profile_picture_path}`}
                             alt={agent.name}
@@ -213,4 +219,4 @@ const Conversations = () => {
   );
 };
 
-export default Conversations; 
+export default Conversations;

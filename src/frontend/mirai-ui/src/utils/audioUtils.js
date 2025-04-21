@@ -7,64 +7,73 @@ let currentAudio = null;
 export const playMessageAudio = async (url, onEnded = null) => {
   try {
     console.log(`Attempting to play audio from URL: ${url}`);
-    
+
     // Stop any currently playing audio
     if (currentAudio) {
-      console.log('Stopping current audio playback');
+      console.log("Stopping current audio playback");
       currentAudio.pause();
       currentAudio.currentTime = 0;
     }
-    
+
     // Check if audio is in cache
     let audio = audioCache.get(url);
-    
+
     if (!audio) {
-      console.log('Creating new audio element');
+      console.log("Creating new audio element");
       // Create a new audio element if not in cache
       audio = new Audio(url);
-      
+
       // Add error handling
       audio.onerror = (e) => {
-        console.error(`Audio error (${e.target.error?.code}): ${e.target.error?.message || 'Unknown error'}`, e);
+        console.error(
+          `Audio error (${e.target.error?.code}): ${
+            e.target.error?.message || "Unknown error"
+          }`,
+          e
+        );
       };
-      
+
       // Listen for the canplaythrough event to ensure the audio is loaded
-      audio.addEventListener('canplaythrough', () => {
-        console.log('Audio loaded and ready to play');
+      audio.addEventListener("canplaythrough", () => {
+        console.log("Audio loaded and ready to play");
       });
-      
+
       audioCache.set(url, audio);
     } else {
-      console.log('Using cached audio element');
+      console.log("Using cached audio element");
     }
-    
+
     // Set onended callback
     if (onEnded) {
       audio.onended = onEnded;
     }
-    
+
     // Preload the audio
     audio.load();
-    
+
     // Set current audio
     currentAudio = audio;
-    
+
     // Play the audio
-    console.log('Starting audio playback');
+    console.log("Starting audio playback");
     const playPromise = audio.play();
-    
+
     if (playPromise !== undefined) {
-      playPromise.then(() => {
-        console.log('Audio playback started successfully');
-      }).catch(error => {
-        console.error('Error playing audio:', error);
-        // Try to play again with user interaction if autoplay was prevented
-        if (error.name === 'NotAllowedError') {
-          console.warn('Autoplay prevented by browser. Audio requires user interaction to play.');
-        }
-      });
+      playPromise
+        .then(() => {
+          console.log("Audio playback started successfully");
+        })
+        .catch((error) => {
+          console.error("Error playing audio:", error);
+          // Try to play again with user interaction if autoplay was prevented
+          if (error.name === "NotAllowedError") {
+            console.warn(
+              "Autoplay prevented by browser. Audio requires user interaction to play."
+            );
+          }
+        });
     }
-    
+
     return true;
   } catch (error) {
     console.error("Error playing audio:", error);
@@ -109,7 +118,7 @@ export class WebSocketManager {
    */
   connect(endpoint) {
     if (this.socket && this.isConnected && this.endpoint === endpoint) {
-      console.log('Already connected to this endpoint, skipping');
+      console.log("Already connected to this endpoint, skipping");
       return;
     }
 
@@ -120,7 +129,7 @@ export class WebSocketManager {
 
     this.endpoint = endpoint;
     const url = `${this.baseUrl}/${endpoint}`;
-    
+
     console.log(`Connecting to WebSocket at ${url}`);
     this.socket = new WebSocket(url);
 
@@ -133,41 +142,42 @@ export class WebSocketManager {
     this.socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log('WebSocket message received:', data);
-        
+        console.log("WebSocket message received:", data);
+
         // Notify all handlers
-        this.messageHandlers.forEach(handler => {
+        this.messageHandlers.forEach((handler) => {
           try {
             handler(data);
           } catch (error) {
-            console.error('Error in message handler:', error);
+            console.error("Error in message handler:", error);
           }
         });
       } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+        console.error("Error parsing WebSocket message:", error);
       }
     };
 
     this.socket.onclose = (event) => {
       console.log(`WebSocket connection closed: ${event.code} ${event.reason}`);
       this.isConnected = false;
-      
+
       // Attempt to reconnect with exponential backoff
       if (this.reconnectAttempts < this.maxReconnectAttempts) {
-        const delay = this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts);
+        const delay =
+          this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts);
         console.log(`Attempting to reconnect in ${delay}ms...`);
-        
+
         setTimeout(() => {
           this.reconnectAttempts++;
           this.connect(this.endpoint);
         }, delay);
       } else {
-        console.error('Maximum reconnection attempts reached. Giving up.');
+        console.error("Maximum reconnection attempts reached. Giving up.");
       }
     };
 
     this.socket.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      console.error("WebSocket error:", error);
     };
   }
 
@@ -180,7 +190,7 @@ export class WebSocketManager {
       this.socket = null;
       this.isConnected = false;
       this.endpoint = null;
-      console.log('WebSocket disconnected');
+      console.log("WebSocket disconnected");
     }
   }
 
@@ -191,7 +201,7 @@ export class WebSocketManager {
    */
   addMessageHandler(handler) {
     this.messageHandlers.push(handler);
-    
+
     // Return a function to remove this handler
     return () => {
       const index = this.messageHandlers.indexOf(handler);
@@ -200,4 +210,4 @@ export class WebSocketManager {
       }
     };
   }
-} 
+}

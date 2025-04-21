@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import { 
-  API_BASE_URL, 
-  CONVERSATION_ENDPOINTS, 
+import {
+  API_BASE_URL,
+  CONVERSATION_ENDPOINTS,
   WS_BASE_URL,
   WS_ENDPOINTS,
   fetchAPI,
-  TTS_ENDPOINTS
+  TTS_ENDPOINTS,
 } from "./APIModuleConfig";
 import { WebSocketManager, playMessageAudio } from "../utils/audioUtils";
 
@@ -25,7 +25,7 @@ const ConversationDetail = ({ conversationId, onBack }) => {
       loadConversation();
       setupWebSocket();
     }
-    
+
     return () => {
       // Clean up WebSocket on unmount
       if (wsManager.current) {
@@ -43,12 +43,14 @@ const ConversationDetail = ({ conversationId, onBack }) => {
   const loadConversation = async () => {
     try {
       setLoading(true);
-      const response = await fetchAPI(CONVERSATION_ENDPOINTS.GET(conversationId));
+      const response = await fetchAPI(
+        CONVERSATION_ENDPOINTS.GET(conversationId)
+      );
       setConversation(response);
       setMessages(response.messages || []);
     } catch (err) {
       setError(`Failed to load conversation: ${err.message}`);
-      console.error('Error loading conversation:', err);
+      console.error("Error loading conversation:", err);
     } finally {
       setLoading(false);
     }
@@ -58,92 +60,94 @@ const ConversationDetail = ({ conversationId, onBack }) => {
   const setupWebSocket = () => {
     try {
       // Initialize WebSocket connection
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const hostname = window.location.hostname;
-      const port = '8005'; // Hardcoded port for the backend server
-      
+      const port = "8005"; // Hardcoded port for the backend server
+
       const wsUrl = `${protocol}//${hostname}:${port}/mirai/api/ws`;
       console.log(`Creating WebSocket manager with base URL: ${wsUrl}`);
-      
+
       wsManager.current = new WebSocketManager(wsUrl);
       // Connect to the conversation's endpoint
       wsManager.current.connect(`conversation/${conversationId}`);
-      
+
       // Add message handler
       wsManager.current.addMessageHandler((data) => {
-        console.log('WebSocket message received:', data);
-        
+        console.log("WebSocket message received:", data);
+
         if (data && data.type === "agent_response" && data.message) {
           // Add the agent message to the chat if it's not already there
           setMessages((prev) => {
             // Avoid adding duplicate messages
-            if (prev.some(m => m.message_uid === data.message.message_uid)) {
+            if (prev.some((m) => m.message_uid === data.message.message_uid)) {
               return prev;
             }
-            
+
             const updatedMessages = [...prev, data.message];
-            
+
             // Play the audio if available
             if (data.message.audio_stream_url) {
               setTimeout(() => {
                 let audioUrl = data.message.audio_stream_url;
-                
+
                 // If the URL doesn't start with http/https, prefix with server base URL
-                if (!audioUrl.startsWith('http')) {
+                if (!audioUrl.startsWith("http")) {
                   // Remove leading slash if present to avoid double slashes
-                  if (audioUrl.startsWith('/')) {
+                  if (audioUrl.startsWith("/")) {
                     audioUrl = audioUrl.substring(1);
                   }
                   audioUrl = `http://localhost:8005/${audioUrl}`;
                 }
-                
-                console.log('Playing audio from URL:', audioUrl);
+
+                console.log("Playing audio from URL:", audioUrl);
                 playMessageAudio(audioUrl);
               }, 500);
             }
-            
+
             return updatedMessages;
           });
         }
       });
     } catch (error) {
       console.error("Error setting up WebSocket:", error);
-      setError("WebSocket connection failed. Messages will not update in real-time.");
+      setError(
+        "WebSocket connection failed. Messages will not update in real-time."
+      );
     }
   };
 
   // Send a new message
   const sendMessage = async () => {
     if (input.trim() === "") return;
-    
+
     try {
       setSending(true);
-      
+
       // Add user message to UI immediately
-      const userMessage = { 
-        content: input, 
+      const userMessage = {
+        content: input,
         message_type: "user",
         conversation_uid: conversationId,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, userMessage]);
-      
+
       // Clear input field
       setInput("");
-      
+
       // Send message to API
       await fetchAPI(CONVERSATION_ENDPOINTS.SEND_MESSAGE, {
-        method: 'POST',
-        body: JSON.stringify({ 
+        method: "POST",
+        body: JSON.stringify({
           content: input,
-          conversation_uid: conversationId
-        })
+          conversation_uid: conversationId,
+        }),
       });
-      
-      console.log('Message sent successfully');
+
+      console.log("Message sent successfully");
     } catch (err) {
       setError(`Failed to send message: ${err.message}`);
-      console.error('Error sending message:', err);
+      console.error("Error sending message:", err);
     } finally {
       setSending(false);
     }
@@ -162,17 +166,17 @@ const ConversationDetail = ({ conversationId, onBack }) => {
     if (message.audio_stream_url) {
       // Handle different URL formats
       let audioUrl = message.audio_stream_url;
-      
+
       // If the URL doesn't start with http/https, prefix with server base URL
-      if (!audioUrl.startsWith('http')) {
+      if (!audioUrl.startsWith("http")) {
         // Remove leading slash if present to avoid double slashes
-        if (audioUrl.startsWith('/')) {
+        if (audioUrl.startsWith("/")) {
           audioUrl = audioUrl.substring(1);
         }
         audioUrl = `http://localhost:8005/${audioUrl}`;
       }
-      
-      console.log('Manual play of audio from URL:', audioUrl);
+
+      console.log("Manual play of audio from URL:", audioUrl);
       playMessageAudio(audioUrl);
     }
   };
@@ -180,7 +184,7 @@ const ConversationDetail = ({ conversationId, onBack }) => {
   // Format date for display
   const formatTime = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
   if (loading && !conversation) {
@@ -212,10 +216,7 @@ const ConversationDetail = ({ conversationId, onBack }) => {
       {error && (
         <div className="bg-red-500 text-white p-2 rounded my-2">
           {error}
-          <button
-            className="ml-2 font-bold"
-            onClick={() => setError(null)}
-          >
+          <button className="ml-2 font-bold" onClick={() => setError(null)}>
             ×
           </button>
         </div>
@@ -234,7 +235,9 @@ const ConversationDetail = ({ conversationId, onBack }) => {
             <div
               key={message.message_uid || index}
               className={`flex ${
-                message.message_type === "user" ? "justify-end" : "justify-start"
+                message.message_type === "user"
+                  ? "justify-end"
+                  : "justify-start"
               }`}
             >
               <div
@@ -246,25 +249,28 @@ const ConversationDetail = ({ conversationId, onBack }) => {
               >
                 <div className="flex justify-between items-center mb-1">
                   <div className="font-semibold">
-                    {message.message_type === "user" ? "You" : (
-                      message.metadata?.agent_name || "AI Assistant"
-                    )}
+                    {message.message_type === "user"
+                      ? "You"
+                      : message.metadata?.agent_name || "AI Assistant"}
                   </div>
                   <div className="text-xs opacity-75">
                     {formatTime(message.created_at)}
                   </div>
                 </div>
-                
-                <div className="break-words whitespace-pre-wrap">{message.content}</div>
-                
-                {message.message_type === "agent" && message.audio_stream_url && (
-                  <button
-                    onClick={() => handlePlayAudio(message)}
-                    className="text-blue-300 hover:text-blue-200 text-xs mt-1 flex items-center"
-                  >
-                    <span>🔊 Play Audio</span>
-                  </button>
-                )}
+
+                <div className="break-words whitespace-pre-wrap">
+                  {message.content}
+                </div>
+
+                {message.message_type === "agent" &&
+                  message.audio_stream_url && (
+                    <button
+                      onClick={() => handlePlayAudio(message)}
+                      className="text-blue-300 hover:text-blue-200 text-xs mt-1 flex items-center"
+                    >
+                      <span>🔊 Play Audio</span>
+                    </button>
+                  )}
               </div>
             </div>
           ))
@@ -301,4 +307,4 @@ const ConversationDetail = ({ conversationId, onBack }) => {
   );
 };
 
-export default ConversationDetail; 
+export default ConversationDetail;
