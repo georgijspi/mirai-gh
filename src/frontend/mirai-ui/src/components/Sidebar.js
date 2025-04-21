@@ -35,6 +35,14 @@ const Sidebar = ({ setSelectedTab, APITest, setAPITest }) => {
               </li>
               <li>
                 <button
+                  onClick={() => setSelectedTab("Conversations")}
+                  className="flex items-center p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 group cursor-pointer w-full"
+                >
+                  <span className="ms-3">Conversations</span>
+                </button>
+              </li>
+              <li>
+                <button
                   onClick={() => setSelectedTab("ChatNow")}
                   className="flex items-center p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 group cursor-pointer w-full"
                 >

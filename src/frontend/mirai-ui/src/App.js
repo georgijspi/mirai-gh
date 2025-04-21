@@ -6,7 +6,7 @@ import APIModuleConfigPage from "./pages/APIModuleConfigPage";
 import SettingsPage from "./pages/SettingsPage";
 import TestUIPage from "./pages/TestUIPage";
 import AgentConfigurationPage from "./pages/AgentConfigurationPage";
-
+import Conversations from "./components/Conversations";
 function App() {
   const [selectedTab, setSelectedTab] = useState("ChatNow");
   const [APITest, setAPITest] = useState(false);
@@ -47,6 +47,7 @@ function App() {
           )}
           {selectedTab === "APIModuleConfig" && <APIModuleConfigPage />}
           {selectedTab === "AgentConfiguration" && <AgentConfigurationPage />}
+          {selectedTab === "Conversations" && <Conversations />}
         </div>
       </div>
     </>
