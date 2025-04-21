@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { API_BASE_URL, TTS_ENDPOINTS } from "../APIModuleConfig";
 import { playMessageAudio } from "../../utils/audioUtils";
 import {
   fetchConversationById,
   sendMessage as sendMessageService,
 } from "../../services/conversationService";
+import { streamSpeech } from "../../services/ttsService";
 import websocketService from "../../services/websocketService";
 
 const ConversationDetail = ({ conversationId, onBack }) => {
@@ -83,19 +83,15 @@ const ConversationDetail = ({ conversationId, onBack }) => {
         // Play the audio if available
         if (data.message.audio_stream_url) {
           setTimeout(() => {
-            let audioUrl = data.message.audio_stream_url;
-
-            // If the URL doesn't start with http/https, prefix with server base URL
-            if (!audioUrl.startsWith("http")) {
-              // Remove leading slash if present to avoid double slashes
-              if (audioUrl.startsWith("/")) {
-                audioUrl = audioUrl.substring(1);
-              }
-              audioUrl = `http://localhost:8005/${audioUrl}`;
-            }
-
-            console.log("Playing audio from URL:", audioUrl);
-            playMessageAudio(audioUrl);
+            const messageId = data.message.message_uid;
+            streamSpeech(messageId, conversationId)
+              .then((response) => {
+                const audioUrl = URL.createObjectURL(response);
+                playMessageAudio(audioUrl);
+              })
+              .catch((error) => {
+                console.error("Error streaming audio:", error);
+              });
           }, 500);
         }
 
@@ -149,20 +145,15 @@ const ConversationDetail = ({ conversationId, onBack }) => {
   // Play audio for a message
   const handlePlayAudio = (message) => {
     if (message.audio_stream_url) {
-      // Handle different URL formats
-      let audioUrl = message.audio_stream_url;
-
-      // If the URL doesn't start with http/https, prefix with server base URL
-      if (!audioUrl.startsWith("http")) {
-        // Remove leading slash if present to avoid double slashes
-        if (audioUrl.startsWith("/")) {
-          audioUrl = audioUrl.substring(1);
-        }
-        audioUrl = `http://localhost:8005/${audioUrl}`;
-      }
-
-      console.log("Manual play of audio from URL:", audioUrl);
-      playMessageAudio(audioUrl);
+      const messageId = message.message_uid;
+      streamSpeech(messageId, conversationId)
+        .then((response) => {
+          const audioUrl = URL.createObjectURL(response);
+          playMessageAudio(audioUrl);
+        })
+        .catch((error) => {
+          console.error("Error streaming audio:", error);
+        });
     }
   };
 
