@@ -11,6 +11,13 @@ export class WebSocketManager {
   }
 
   connect(endpoint) {
+    if (!endpoint) {
+      console.warn(
+        "WebSocketManager: endpoint is null or undefined, not connecting."
+      );
+      return;
+    }
+
     if (this.socket && this.isConnected && this.endpoint === endpoint) {
       return;
     }
