@@ -163,7 +163,7 @@ async def list_agents(
     current_user: dict = Depends(get_current_user)
 ):
     """List all agents."""
-    agents = await get_all_agents()
+    agents = await get_all_agents(include_archived=False)
     return {"agents": agents}
 
 @router.get("/{agent_uid}", response_model=AgentResponse)
