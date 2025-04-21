@@ -1,19 +1,13 @@
-// API configuration for MirAI UI
-
-// Base URL for API requests
 export const API_BASE_URL =
   process.env.REACT_APP_API_BASE_URL || "http://localhost:8005/mirai/api";
 
-// WebSocket URL for real-time updates
 export const WS_BASE_URL = (() => {
-  // Determine if we're using HTTPS to select the appropriate WebSocket protocol
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 
   if (process.env.REACT_APP_WS_BASE_URL) {
     return process.env.REACT_APP_WS_BASE_URL;
   }
 
-  // Extract hostname and port from API_BASE_URL or use default
   try {
     if (API_BASE_URL) {
       const url = new URL(API_BASE_URL);
@@ -23,46 +17,58 @@ export const WS_BASE_URL = (() => {
     console.error("Failed to parse API_BASE_URL for WebSocket connection:", e);
   }
 
-  // Fallback to default
   return "ws://localhost:8005/mirai/api/ws";
 })();
 
-// Default headers for API requests
 export const API_HEADERS = {
   "Content-Type": "application/json",
 };
 
-// Agent endpoints
-export const AGENT_ENDPOINTS = {
-  CREATE: "/agent",
-  LIST: "/agent/list",
-  GET: (agentId) => `/agent/${agentId}`,
-  UPDATE: (agentId) => `/agent/${agentId}`,
-  DELETE: (agentId) => `/agent/${agentId}`,
-  UPLOAD_VOICE: "/agent/upload_voice",
+export const ENDPOINTS = {
+  AGENT: {
+    CREATE: "/agent",
+    LIST: "/agent/list",
+    GET: (agentId) => `/agent/${agentId}`,
+    UPDATE: (agentId) => `/agent/${agentId}`,
+    DELETE: (agentId) => `/agent/${agentId}`,
+    UPLOAD_VOICE: "/agent/upload_voice",
+  },
+  TTS: {
+    GENERATE: "/tts/generate",
+    DOWNLOAD: (messageId, conversationId) =>
+      `/tts/download/${messageId}${
+        conversationId ? `?conversation_uid=${conversationId}` : ""
+      }`,
+    STREAM: (messageId, conversationId) =>
+      `/tts/stream/${messageId}${
+        conversationId ? `?conversation_uid=${conversationId}` : ""
+      }`,
+    VOICES: "/tts/voices",
+  },
+  WS: {
+    GLOBAL: "global",
+    CONVERSATION: (conversationId) => `conversation/${conversationId}`,
+  },
+  CONVERSATION: {
+    CREATE: "",
+    LIST: "/list",
+    GET: (conversationUid) => `/${conversationUid}`,
+    UPDATE: (conversationUid) => `/${conversationUid}`,
+    DELETE: (conversationUid) => `/${conversationUid}`,
+    SEND_MESSAGE: "/send_message",
+    RATE_MESSAGE: "/rate_message",
+  },
+  LLM: {
+    CONFIG: "/llm/config",
+    GET: (configUid) => `/llm/config/${configUid}`,
+    LIST_MODELS: "/llm/ollama/list",
+    PULL_MODEL: "/llm/ollama/pull",
+    DELETE_MODEL: "/llm/ollama/delete",
+    UPDATE: (configUid) => `/llm/config/${configUid}`,
+    DELETE: (configUid) => `/llm/config/${configUid}`,
+  },
 };
 
-// TTS endpoints
-export const TTS_ENDPOINTS = {
-  GENERATE: "/tts/generate",
-  DOWNLOAD: (messageId, conversationId) =>
-    `/tts/download/${messageId}${
-      conversationId ? `?conversation_uid=${conversationId}` : ""
-    }`,
-  STREAM: (messageId, conversationId) =>
-    `/tts/stream/${messageId}${
-      conversationId ? `?conversation_uid=${conversationId}` : ""
-    }`,
-  VOICES: "/tts/voices",
-};
-
-// WebSocket endpoints
-export const WS_ENDPOINTS = {
-  GLOBAL: "global",
-  CONVERSATION: (conversationId) => `conversation/${conversationId}`,
-};
-
-// Generic fetch function for API requests
 export const fetchAPI = async (endpoint, options = {}) => {
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {

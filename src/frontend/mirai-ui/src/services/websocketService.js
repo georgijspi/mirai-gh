@@ -1,4 +1,5 @@
-import { WebSocketManager } from "../utils/audioUtils";
+import { WebSocketManager } from "../utils/websocketManager";
+import { fetchAPI, ENDPOINTS } from "../config/api.config";
 
 /**
  * WebSocket service for managing real-time connections
@@ -113,3 +114,18 @@ class WebSocketService {
 const websocketService = new WebSocketService();
 
 export default websocketService;
+
+export const disconnect = (endpoint) => {
+  if (this.connections.has(endpoint)) {
+    const wsManager = this.connections.get(endpoint);
+    wsManager.disconnect();
+    this.connections.delete(endpoint);
+  }
+};
+
+export const disconnectAll = () => {
+  for (const [endpoint, wsManager] of this.connections.entries()) {
+    wsManager.disconnect();
+    this.connections.delete(endpoint);
+  }
+};
