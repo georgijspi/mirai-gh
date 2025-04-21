@@ -17,12 +17,10 @@ const Conversations = () => {
   const [agents, setAgents] = useState([]);
   const [loadingAgents, setLoadingAgents] = useState(false);
 
-  // Fetch conversations on component mount
   useEffect(() => {
     loadConversations();
   }, []);
 
-  // Load user conversations
   const loadConversations = async () => {
     try {
       setLoading(true);
@@ -36,12 +34,10 @@ const Conversations = () => {
     }
   };
 
-  // Load agents when modal is opened
   const handleNewConversation = async () => {
     try {
       setLoadingAgents(true);
-      // Use the fetchAgents function from agentService instead of direct API call
-      const response = await fetchAgents(false); // Don't include archived agents
+      const response = await fetchAgents(false); // Doesn't included archived agents
       setAgents(response.agents || []);
       setShowNewConversationModal(true);
     } catch (err) {
@@ -52,17 +48,14 @@ const Conversations = () => {
     }
   };
 
-  // Create new conversation with selected agent
   const createConversation = async (agentUid) => {
     try {
       setLoading(true);
       const response = await createConversationService(agentUid);
 
-      // Close modal and reload conversations
       setShowNewConversationModal(false);
       await loadConversations();
 
-      // Select the newly created conversation
       setSelectedConversation(response.conversation_uid);
     } catch (err) {
       setError(`Failed to create conversation: ${err.message}`);
@@ -72,7 +65,6 @@ const Conversations = () => {
     }
   };
 
-  // Format date for display
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return (
