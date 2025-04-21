@@ -58,6 +58,11 @@ export const ENDPOINTS = {
     SEND_MESSAGE: "/conversation/send_message",
     RATE_MESSAGE: "/conversation/rate_message",
   },
+  GLOBAL_CONVERSATION: {
+    GET: "/global_conversation",
+    SEND_MESSAGE: "/global_conversation/send_message",
+    RATE_MESSAGE: "/global_conversation/rate_message",
+  },
   LLM: {
     CONFIG: "/llm/config",
     GET: (configUid) => `/llm/config/${configUid}`,
@@ -70,14 +75,21 @@ export const ENDPOINTS = {
 };
 
 export const fetchAPI = async (endpoint, options = {}) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      headers: API_HEADERS,
-      mode: "cors",
-      credentials: "omit",
-      ...options,
-    });
+  const headers = { ...API_HEADERS, ...options.headers };
 
+  // Remove Content-Type if body is FormData
+  if (options.body instanceof FormData) {
+    delete headers["Content-Type"];
+  }
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers,
+    mode: "cors",
+    credentials: "omit",
+  });
+
+  try {
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
       throw new Error(
