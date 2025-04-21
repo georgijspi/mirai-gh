@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { API_BASE_URL } from "./APIModuleConfig";
-import { fetchAgents } from "../services/agentService";
+import { API_BASE_URL } from "../APIModuleConfig";
+import { fetchAgents } from "../../services/agentService";
 import {
   fetchConversations,
   createConversation as createConversationService,
-} from "../services/conversationService";
+} from "../../services/conversationService";
 import ConversationDetail from "./ConversationDetail";
 
 const Conversations = () => {

@@ -1,15 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  API_BASE_URL,
-  WS_BASE_URL,
-  WS_ENDPOINTS,
-  TTS_ENDPOINTS,
-} from "./APIModuleConfig";
-import { WebSocketManager, playMessageAudio } from "../utils/audioUtils";
+import { API_BASE_URL, TTS_ENDPOINTS } from "../APIModuleConfig";
+import { playMessageAudio } from "../../utils/audioUtils";
 import {
   fetchConversationById,
   sendMessage as sendMessageService,
-} from "../services/conversationService";
+} from "../../services/conversationService";
+import websocketService from "../../services/websocketService";
 
 const ConversationDetail = ({ conversationId, onBack }) => {
   const [conversation, setConversation] = useState(null);
@@ -18,8 +14,8 @@ const ConversationDetail = ({ conversationId, onBack }) => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
-  const wsManager = useRef(null);
   const messagesEndRef = useRef(null);
+  const wsEndpoint = useRef(`conversation/${conversationId}`);
 
   // Load conversation data when component mounts or conversationId changes
   useEffect(() => {
@@ -30,9 +26,7 @@ const ConversationDetail = ({ conversationId, onBack }) => {
 
     return () => {
       // Clean up WebSocket on unmount
-      if (wsManager.current) {
-        wsManager.current.disconnect();
-      }
+      websocketService.disconnect(wsEndpoint.current);
     };
   }, [conversationId]);
 
@@ -59,60 +53,54 @@ const ConversationDetail = ({ conversationId, onBack }) => {
   // Setup WebSocket connection for real-time messages
   const setupWebSocket = () => {
     try {
-      // Initialize WebSocket connection
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const hostname = window.location.hostname;
-      const port = "8005"; // Hardcoded port for the backend server
+      // Update the WebSocket endpoint
+      wsEndpoint.current = `conversation/${conversationId}`;
 
-      const wsUrl = `${protocol}//${hostname}:${port}/mirai/api/ws`;
-      console.log(`Creating WebSocket manager with base URL: ${wsUrl}`);
-
-      wsManager.current = new WebSocketManager(wsUrl);
-      // Connect to the conversation's endpoint
-      wsManager.current.connect(`conversation/${conversationId}`);
-
-      // Add message handler
-      wsManager.current.addMessageHandler((data) => {
-        console.log("WebSocket message received:", data);
-
-        if (data && data.type === "agent_response" && data.message) {
-          // Add the agent message to the chat if it's not already there
-          setMessages((prev) => {
-            // Avoid adding duplicate messages
-            if (prev.some((m) => m.message_uid === data.message.message_uid)) {
-              return prev;
-            }
-
-            const updatedMessages = [...prev, data.message];
-
-            // Play the audio if available
-            if (data.message.audio_stream_url) {
-              setTimeout(() => {
-                let audioUrl = data.message.audio_stream_url;
-
-                // If the URL doesn't start with http/https, prefix with server base URL
-                if (!audioUrl.startsWith("http")) {
-                  // Remove leading slash if present to avoid double slashes
-                  if (audioUrl.startsWith("/")) {
-                    audioUrl = audioUrl.substring(1);
-                  }
-                  audioUrl = `http://localhost:8005/${audioUrl}`;
-                }
-
-                console.log("Playing audio from URL:", audioUrl);
-                playMessageAudio(audioUrl);
-              }, 500);
-            }
-
-            return updatedMessages;
-          });
-        }
-      });
+      // Connect to the WebSocket using the service
+      websocketService.connect(wsEndpoint.current, handleWebSocketMessage);
     } catch (error) {
       console.error("Error setting up WebSocket:", error);
       setError(
         "WebSocket connection failed. Messages will not update in real-time."
       );
+    }
+  };
+
+  // Handle WebSocket messages
+  const handleWebSocketMessage = (data) => {
+    console.log("WebSocket message received:", data);
+
+    if (data && data.type === "agent_response" && data.message) {
+      // Add the agent message to the chat if it's not already there
+      setMessages((prev) => {
+        // Avoid adding duplicate messages
+        if (prev.some((m) => m.message_uid === data.message.message_uid)) {
+          return prev;
+        }
+
+        const updatedMessages = [...prev, data.message];
+
+        // Play the audio if available
+        if (data.message.audio_stream_url) {
+          setTimeout(() => {
+            let audioUrl = data.message.audio_stream_url;
+
+            // If the URL doesn't start with http/https, prefix with server base URL
+            if (!audioUrl.startsWith("http")) {
+              // Remove leading slash if present to avoid double slashes
+              if (audioUrl.startsWith("/")) {
+                audioUrl = audioUrl.substring(1);
+              }
+              audioUrl = `http://localhost:8005/${audioUrl}`;
+            }
+
+            console.log("Playing audio from URL:", audioUrl);
+            playMessageAudio(audioUrl);
+          }, 500);
+        }
+
+        return updatedMessages;
+      });
     }
   };
 
