@@ -25,7 +25,6 @@ const ConversationDetail = ({ conversationId, onBack }) => {
     }
 
     return () => {
-      // Clean up WebSocket on unmount
       websocketService.disconnect(wsEndpoint.current);
     };
   }, [conversationId]);
@@ -35,7 +34,6 @@ const ConversationDetail = ({ conversationId, onBack }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Load conversation data and messages
   const loadConversation = async () => {
     try {
       setLoading(true);
@@ -50,13 +48,9 @@ const ConversationDetail = ({ conversationId, onBack }) => {
     }
   };
 
-  // Setup WebSocket connection for real-time messages
   const setupWebSocket = () => {
     try {
-      // Update the WebSocket endpoint
       wsEndpoint.current = `conversation/${conversationId}`;
-
-      // Connect to the WebSocket using the service
       websocketService.connect(wsEndpoint.current, handleWebSocketMessage);
     } catch (error) {
       console.error("Error setting up WebSocket:", error);
@@ -83,15 +77,7 @@ const ConversationDetail = ({ conversationId, onBack }) => {
         // Play the audio if available
         if (data.message.audio_stream_url) {
           setTimeout(() => {
-            const messageId = data.message.message_uid;
-            streamSpeech(messageId, conversationId)
-              .then((response) => {
-                const audioUrl = URL.createObjectURL(response);
-                playMessageAudio(audioUrl);
-              })
-              .catch((error) => {
-                console.error("Error streaming audio:", error);
-              });
+            handlePlayAudio(data.message);
           }, 500);
         }
 
@@ -100,7 +86,6 @@ const ConversationDetail = ({ conversationId, onBack }) => {
     }
   };
 
-  // Send a new message
   const sendMessage = async () => {
     if (input.trim() === "") return;
 
@@ -116,10 +101,8 @@ const ConversationDetail = ({ conversationId, onBack }) => {
       };
       setMessages((prev) => [...prev, userMessage]);
 
-      // Clear input field
       setInput("");
 
-      // Send message to API using the service
       await sendMessageService({
         content: input,
         conversation_uid: conversationId,
@@ -134,7 +117,6 @@ const ConversationDetail = ({ conversationId, onBack }) => {
     }
   };
 
-  // Handle key press
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -147,8 +129,9 @@ const ConversationDetail = ({ conversationId, onBack }) => {
     if (message.audio_stream_url) {
       const messageId = message.message_uid;
       streamSpeech(messageId, conversationId)
-        .then((response) => {
-          const audioUrl = URL.createObjectURL(response);
+        .then((response) => response.blob())
+        .then((audioBlob) => {
+          const audioUrl = URL.createObjectURL(audioBlob);
           playMessageAudio(audioUrl);
         })
         .catch((error) => {
@@ -157,7 +140,6 @@ const ConversationDetail = ({ conversationId, onBack }) => {
     }
   };
 
-  // Format date for display
   const formatTime = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -170,6 +152,13 @@ const ConversationDetail = ({ conversationId, onBack }) => {
       </div>
     );
   }
+
+  const handleTranscription = (transcription) => {
+    if (transcription.trim() === "") return;
+
+    const userMessage = { text: transcription, sender: "user" };
+    setMessages((prev) => [...prev, userMessage]);
+  };
 
   return (
     <div className="flex flex-col h-full">
