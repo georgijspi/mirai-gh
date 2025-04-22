@@ -2,7 +2,7 @@ import os
 import torch
 import logging
 
-# Set environment variable for PyTorch 2.6+ 
+# Set environment variable for PyTorch 2.6+
 os.environ["TORCH_LOAD_WEIGHTS_ONLY"] = "0"
 
 # Configure logging
@@ -20,11 +20,16 @@ try:
         from TTS.tts.models.base_tts import BaseTTS
         from TTS.encoder.configs.base_encoder_config import BaseEncoderConfig
         from TTS.utils.generic_utils import get_user_data_dir
-        
+
         # Add ALL relevant classes to safe_globals
         classes = [
-            XttsConfig, Xtts, XttsAudioConfig, BaseDatasetConfig, 
-            BaseTTS, BaseEncoderConfig, XttsArgs
+            XttsConfig,
+            Xtts,
+            XttsAudioConfig,
+            BaseDatasetConfig,
+            BaseTTS,
+            BaseEncoderConfig,
+            XttsArgs,
         ]
         torch.serialization.add_safe_globals(classes)
         logger.info("Successfully added TTS model classes to PyTorch safe_globals")
@@ -38,12 +43,14 @@ logger.info(f"Using device: {device}")
 # Only import TTS after setting up the environment and safe_globals
 try:
     from TTS.api import TTS
+
     tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
     logger.info(f"TTS Model successfully loaded onto {device}")
 except Exception as e:
     logger.error(f"Failed to load TTS model: {e}")
     tts = None
-    
+
+
 def generate_speech(speaker_wav_path: str, text: str, output_path: str):
     """
     Text to speech generation using Coqui XTTS.
@@ -66,7 +73,7 @@ def generate_speech(speaker_wav_path: str, text: str, output_path: str):
             text=text,
             speaker_wav=speaker_wav_path,
             language="en",
-            file_path=output_path
+            file_path=output_path,
         )
         logger.info(f"Speech successfully generated at: {output_path}")
         return output_path
