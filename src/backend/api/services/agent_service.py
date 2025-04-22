@@ -73,7 +73,7 @@ async def get_agent(agent_uid: str) -> Optional[Dict[str, Any]]:
     return agent
 
 
-async def get_all_agents() -> List[Dict[str, Any]]:
+async def get_all_agents(include_archived=False) -> List[Dict[str, Any]]:
     """Get all agent configurations."""
     db = get_database()
     agents = await db[AGENT_COLLECTION].find({}).to_list(length=100)

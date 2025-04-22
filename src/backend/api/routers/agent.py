@@ -169,7 +169,7 @@ async def upload_custom_voice(agent_uid: str, file: UploadFile = File(...)):
 @router.get("/list", response_model=AgentListResponse)
 async def list_agents(current_user: dict = Depends(get_current_user)):
     """List all agents."""
-    agents = await get_all_agents()
+    agents = await get_all_agents(include_archived=False)
     return {"agents": agents}
 
 
