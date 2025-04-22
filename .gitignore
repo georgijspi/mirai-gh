@@ -16,3 +16,4 @@ src/frontend/mirai-ui/package-lock.json
 src/frontend/mirai-ui/public/model/*
 src/frontend/mirai-ui/package.json
 src/data/global_conversation
+src/backend/api/tests/__pycache__/
