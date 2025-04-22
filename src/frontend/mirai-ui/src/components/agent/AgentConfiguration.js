@@ -38,16 +38,6 @@ const AgentConfiguration = () => {
       const data = await fetchAgents(false);
       console.log("Loaded agents data:", data);
 
-      // Log agent picture information
-      if (data.agents && data.agents.length > 0) {
-        data.agents.forEach((agent) => {
-          console.log(`Agent ${agent.name} (${agent.agent_uid}):`, {
-            profile_picture_path: agent.profile_picture_path,
-            profile_picture_url: agent.profile_picture_url,
-          });
-        });
-      }
-
       setAgents(data.agents || []);
       setLoading(false);
     } catch (err) {
