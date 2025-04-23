@@ -6,6 +6,16 @@ import {
 } from "../../services/conversationService";
 import { streamSpeech } from "../../services/ttsService";
 import websocketService from "../../services/websocketService";
+import VoiceWidget from "../VoiceWidget";
+
+// dummy config for voice widget
+const config = {
+  wakeWordMode: false,
+  keywordModel: "porcupine",
+  useCustomKeyword: false,
+  customKeywordModelPath: "",
+  customKeywordLabel: "",
+};
 
 const ConversationDetail = ({ conversationId, onBack }) => {
   const [conversation, setConversation] = useState(null);
@@ -86,15 +96,28 @@ const ConversationDetail = ({ conversationId, onBack }) => {
     }
   };
 
-  const sendMessage = async () => {
-    if (input.trim() === "") return;
+  const formatTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
+
+  if (loading && !conversation) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-gray-400 text-xl">Loading conversation...</div>
+      </div>
+    );
+  }
+
+  const processMessage = async (content) => {
+    if (content.trim() === "") return;
 
     try {
       setSending(true);
 
       // Add user message to UI immediately
       const userMessage = {
-        content: input,
+        content: content,
         message_type: "user",
         conversation_uid: conversationId,
         created_at: new Date().toISOString(),
@@ -104,7 +127,7 @@ const ConversationDetail = ({ conversationId, onBack }) => {
       setInput("");
 
       await sendMessageService({
-        content: input,
+        content: content,
         conversation_uid: conversationId,
       });
 
@@ -117,11 +140,12 @@ const ConversationDetail = ({ conversationId, onBack }) => {
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+  const sendMessage = async () => {
+    await processMessage(input);
+  };
+
+  const handleTranscription = async (transcription) => {
+    await processMessage(transcription);
   };
 
   // Play audio for a message
@@ -140,24 +164,11 @@ const ConversationDetail = ({ conversationId, onBack }) => {
     }
   };
 
-  const formatTime = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  };
-
-  if (loading && !conversation) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-gray-400 text-xl">Loading conversation...</div>
-      </div>
-    );
-  }
-
-  const handleTranscription = (transcription) => {
-    if (transcription.trim() === "") return;
-
-    const userMessage = { text: transcription, sender: "user" };
-    setMessages((prev) => [...prev, userMessage]);
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
   };
 
   return (
@@ -255,6 +266,7 @@ const ConversationDetail = ({ conversationId, onBack }) => {
             rows="2"
             disabled={sending}
           />
+          <VoiceWidget onTranscription={handleTranscription} config={config} />
           <button
             onClick={sendMessage}
             disabled={sending || input.trim() === ""}
