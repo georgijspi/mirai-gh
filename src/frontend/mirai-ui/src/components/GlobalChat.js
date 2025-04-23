@@ -11,7 +11,7 @@ import { streamSpeech } from "../services/ttsService";
 const GlobalChat = (config) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [isLoading, setSending] = useState(false);
+  const [Sending, setSending] = useState(false);
   const [error, setError] = useState(null);
   const messagesEndRef = useRef(null);
 
@@ -77,14 +77,19 @@ const GlobalChat = (config) => {
     try {
       setSending(true);
 
-      const userMessage = { content: input, message_type: "user" };
+      // Add user message to UI immediately
+      const userMessage = {
+        content: input,
+        message_type: "user",
+        created_at: new Date().toISOString(),
+      };
       setMessages((prev) => [...prev, userMessage]);
 
-      console.log("Sending message...");
+      setInput("");
+
       await sendGlobalMessage(input);
 
       console.log("Message sent successfully");
-      setInput("");
     } catch (err) {
       setError(`Failed to send message: ${err.message}`);
       console.error("Error sending message:", err);
@@ -116,11 +121,33 @@ const GlobalChat = (config) => {
     }
   };
 
-  const handleTranscription = (transcription) => {
+  const handleTranscription = async (transcription) => {
     if (transcription.trim() === "") return;
 
-    const userMessage = { text: transcription, sender: "user" };
-    setMessages((prev) => [...prev, userMessage]);
+    try {
+      setSending(true);
+
+      const userMessage = {
+        content: transcription,
+        message_type: "user",
+        created_at: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, userMessage]);
+
+      await sendGlobalMessage(transcription);
+
+      console.log("Message sent successfully");
+    } catch (err) {
+      setError(`Failed to send message: ${err.message}`);
+      console.error("Error sending message:", err);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const formatTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
   return (
@@ -132,7 +159,7 @@ const GlobalChat = (config) => {
 
         {/* Error message */}
         {error && (
-          <div className="bg-red-500 text-white p-2 rounded mb-4">
+          <div className="bg-red-500 text-white p-2 rounded my-2">
             {error}
             <button className="ml-2 font-bold" onClick={() => setError(null)}>
               ×
@@ -140,72 +167,92 @@ const GlobalChat = (config) => {
           </div>
         )}
 
-        {/* Chat history area */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="h-full">
-            {messages.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
-                <h1 className="text-gray-400 text-center font-bold text-2xl">
-                  {isLoading ? "Loading..." : "MirAI is ready to assist you!"}
-                </h1>
-              </div>
-            ) : (
-              messages.map((message, index) => (
+        {/* Messages area */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {messages.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <h1 className="text-gray-400 text-center font-bold text-xl">
+                {Sending ? "Loading..." : "MirAI is ready to assist you!"}
+              </h1>
+            </div>
+          ) : (
+            messages.map((message, index) => (
+              <div
+                key={message.message_uid || index}
+                className={`flex ${
+                  message.message_type === "user"
+                    ? "justify-end"
+                    : "justify-start"
+                }`}
+              >
                 <div
-                  key={message.message_uid || index}
-                  className={`p-2 ${
-                    message.message_type === "user" ? "text-right" : "text-left"
+                  className={`max-w-[70%] rounded-lg px-4 py-2 ${
+                    message.message_type === "user"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-800 text-white"
                   }`}
                 >
-                  <div className="flex items-center">
-                    {message.message_type === "agent" &&
-                      message.audio_stream_url && (
-                        <button
-                          onClick={() => handlePlayAudio(message)}
-                          className="mr-2 text-blue-400 hover:text-blue-300"
-                        >
-                          🔊
-                        </button>
-                      )}
-                    <span
-                      className={`inline-block px-3 py-1 text-white mr-2 mb-2 ${
-                        message.message_type === "user"
-                          ? "bg-gray-500 rounded-tl-[10px] rounded-bl-[10px] rounded-br-[10px]"
-                          : "bg-gray-700 rounded-tr-[10px] rounded-bl-[10px] rounded-br-[10px]"
-                      }`}
-                    >
-                      {message.content}
-                    </span>
+                  <div className="flex justify-between items-center mb-1">
+                    <div className="font-semibold">
+                      {message.message_type === "user"
+                        ? "You"
+                        : message.metadata?.agent_name || "AI Assistant"}
+                    </div>
+                    <div className="text-xs opacity-75">
+                      {formatTime(message.created_at)}
+                    </div>
                   </div>
+
+                  <div className="break-words whitespace-pre-wrap">
+                    {message.content}
+                  </div>
+
+                  {message.message_type === "agent" &&
+                    message.audio_stream_url && (
+                      <button
+                        onClick={() => handlePlayAudio(message)}
+                        className="text-blu e-300 hover:text-blue-200 text-xs mt-1 flex items-center"
+                      >
+                        <span>🔊 Play Audio</span>
+                      </button>
+                    )}
                 </div>
-              ))
-            )}
-            <div ref={messagesEndRef} />
-          </div>
+              </div>
+            ))
+          )}
+          <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
-        <div className="flex">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your message..."
-            className="flex-1 p-3 bg-gray-800 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            rows={2}
-            disabled={isLoading}
-          />
-          <div className="px-2"></div>
-          <VoiceWidget onTranscription={handleTranscription} config={config} />
-          <button
-            onClick={sendMessage}
-            className={`bg-blue-500 text-white rounded-md hover:bg-blue-600 transition px-4 ${
-              isLoading ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-            disabled={isLoading}
-          >
-            {isLoading ? "Sending..." : "Send"}
-          </button>
+        {/* Message input */}
+        <div className="p-4 border-t border-gray-700">
+          <div className="flex">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type a message..."
+              className="flex-1 bg-gray-600 text-white rounded-l-lg p-3 outline-none resize-none"
+              rows="2"
+              disabled={Sending}
+            />
+            <div className="px-2 flex items-center">
+              <VoiceWidget
+                onTranscription={handleTranscription}
+                config={config}
+              />
+            </div>
+            <button
+              onClick={sendMessage}
+              disabled={Sending || input.trim() === ""}
+              className={`px-4 rounded-r-lg ${
+                Sending || input.trim() === ""
+                  ? "bg-gray-600 text-gray-400 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700 text-white"
+              }`}
+            >
+              {Sending ? "Sending..." : "Send"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
