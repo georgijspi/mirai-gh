@@ -85,7 +85,6 @@ export default function VoiceWidget({
   const initWakeWordEngine = async () => {
     try {
       if (!validateAccessKey()) return false;
-
       let keyword;
 
       if (config.useCustomKeyword && config.customKeywordModelPath) {
@@ -267,10 +266,10 @@ export default function VoiceWidget({
   const status = getStatus();
 
   return (
-    <div className="flex flex-col items-center space-y-4">
+    <div className="flex flex-col items-center space-y-2 md:space-y-4">
       <button
         onClick={toggleVoiceInput}
-        className={`p-3 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-300 m-1 ${
+        className={`p-2 md:p-3 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-300 m-1 ${
           !isSttLoaded || !isWakeWordLoaded
             ? "bg-gray-500"
             : wakeWordMode
@@ -290,20 +289,20 @@ export default function VoiceWidget({
         }
       >
         {isSttRecording || (wakeWordMode && wakeWordDetected) ? (
-          <FaMicrophone size={24} />
+          <FaMicrophone size={18} className="md:w-6 md:h-6" />
         ) : (
-          <FaMicrophoneSlash size={24} />
+          <FaMicrophoneSlash size={18} className="md:w-6 md:h-6" />
         )}
       </button>
 
       {initError && (
-        <div className="text-red-500 text-xs absolute bottom-16 bg-gray-800 p-2 rounded">
+        <div className="text-red-500 text-xs absolute bottom-16 bg-gray-800 p-2 rounded max-w-[90%] md:max-w-none">
           {initError}
         </div>
       )}
 
       {status && (
-        <div className="text-green-500 text-xs absolute bottom-16 bg-gray-800 p-2 rounded">
+        <div className="text-green-500 text-xs absolute bottom-16 bg-gray-800 p-2 rounded max-w-[90%] md:max-w-none">
           {status} {isSttRecording && `(${Math.round(recordingElapsedSec)}s)`}
         </div>
       )}

@@ -6,6 +6,16 @@ import {
 } from "../../services/conversationService";
 import { streamSpeech } from "../../services/ttsService";
 import websocketService from "../../services/websocketService";
+import VoiceWidget from "../VoiceWidget";
+
+// dummy config for voice widget
+const config = {
+  wakeWordMode: false,
+  keywordModel: "porcupine",
+  useCustomKeyword: false,
+  customKeywordModelPath: "",
+  customKeywordLabel: "",
+};
 
 const ConversationDetail = ({ conversationId, onBack }) => {
   const [conversation, setConversation] = useState(null);
@@ -86,15 +96,28 @@ const ConversationDetail = ({ conversationId, onBack }) => {
     }
   };
 
-  const sendMessage = async () => {
-    if (input.trim() === "") return;
+  const formatTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
+
+  if (loading && !conversation) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-gray-400 text-xl">Loading conversation...</div>
+      </div>
+    );
+  }
+
+  const processMessage = async (content) => {
+    if (content.trim() === "") return;
 
     try {
       setSending(true);
 
       // Add user message to UI immediately
       const userMessage = {
-        content: input,
+        content: content,
         message_type: "user",
         conversation_uid: conversationId,
         created_at: new Date().toISOString(),
@@ -104,7 +127,7 @@ const ConversationDetail = ({ conversationId, onBack }) => {
       setInput("");
 
       await sendMessageService({
-        content: input,
+        content: content,
         conversation_uid: conversationId,
       });
 
@@ -117,11 +140,12 @@ const ConversationDetail = ({ conversationId, onBack }) => {
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+  const sendMessage = async () => {
+    await processMessage(input);
+  };
+
+  const handleTranscription = async (transcription) => {
+    await processMessage(transcription);
   };
 
   // Play audio for a message
@@ -140,38 +164,26 @@ const ConversationDetail = ({ conversationId, onBack }) => {
     }
   };
 
-  const formatTime = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  };
-
-  if (loading && !conversation) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-gray-400 text-xl">Loading conversation...</div>
-      </div>
-    );
-  }
-
-  const handleTranscription = (transcription) => {
-    if (transcription.trim() === "") return;
-
-    const userMessage = { text: transcription, sender: "user" };
-    setMessages((prev) => [...prev, userMessage]);
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-screen">
       {/* Conversation header */}
-      <div className="flex justify-between items-center pb-4 border-b border-gray-700">
+      <div className="flex justify-between items-center pb-2 md:pb-4 border-b border-gray-700">
         <div className="flex items-center">
           <button
             onClick={onBack}
-            className="mr-3 text-gray-400 hover:text-white"
+            className="mr-2 md:mr-3 text-gray-400 hover:text-white text-lg md:text-xl"
+            aria-label="Go back"
           >
             ←
           </button>
-          <h3 className="text-xl font-bold text-white">
+          <h3 className="text-base md:text-xl font-bold text-white">
             {conversation?.title || "Conversation"}
           </h3>
         </div>
@@ -179,7 +191,7 @@ const ConversationDetail = ({ conversationId, onBack }) => {
 
       {/* Error message */}
       {error && (
-        <div className="bg-red-500 text-white p-2 rounded my-2">
+        <div className="bg-red-500 text-white p-2 rounded my-2 text-xs md:text-sm">
           {error}
           <button className="ml-2 font-bold" onClick={() => setError(null)}>
             ×
@@ -188,10 +200,10 @@ const ConversationDetail = ({ conversationId, onBack }) => {
       )}
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 flex flex-col p-2 md:p-4 space-y-2 md:space-y-4">
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <h1 className="text-gray-400 text-center font-bold text-xl">
+            <h1 className="text-gray-400 text-center font-bold text-base md:text-xl">
               No messages yet. Start a conversation!
             </h1>
           </div>
@@ -206,14 +218,14 @@ const ConversationDetail = ({ conversationId, onBack }) => {
               }`}
             >
               <div
-                className={`max-w-[70%] rounded-lg px-4 py-2 ${
+                className={`max-w-[90%] md:max-w-[70%] rounded-lg px-3 md:px-4 py-2 ${
                   message.message_type === "user"
                     ? "bg-blue-600 text-white"
                     : "bg-gray-700 text-white"
                 }`}
               >
-                <div className="flex justify-between items-center mb-1">
-                  <div className="font-semibold">
+                <div className="flex-1 justify-between items-center mb-1">
+                  <div className="font-semibold text-xs md:text-base">
                     {message.message_type === "user"
                       ? "You"
                       : message.metadata?.agent_name || "AI Assistant"}
@@ -223,7 +235,7 @@ const ConversationDetail = ({ conversationId, onBack }) => {
                   </div>
                 </div>
 
-                <div className="break-words whitespace-pre-wrap">
+                <div className="break-words whitespace-pre-wrap text-xs md:text-base">
                   {message.content}
                 </div>
 
@@ -244,21 +256,22 @@ const ConversationDetail = ({ conversationId, onBack }) => {
       </div>
 
       {/* Message input */}
-      <div className="p-4 border-t border-gray-700">
+      <div className="p-2 md:p-4 border-t border-gray-700 mt-auto">
         <div className="flex">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a message..."
-            className="flex-1 bg-gray-700 text-white rounded-l-lg p-3 outline-none resize-none"
+            className="flex-1 bg-gray-700 text-white rounded-l-lg p-2 md:p-3 outline-none resize-none text-xs md:text-base"
             rows="2"
             disabled={sending}
           />
+          <VoiceWidget onTranscription={handleTranscription} config={config} />
           <button
             onClick={sendMessage}
             disabled={sending || input.trim() === ""}
-            className={`px-4 rounded-r-lg ${
+            className={`px-3 md:px-4 rounded-r-lg ${
               sending || input.trim() === ""
                 ? "bg-gray-600 text-gray-400 cursor-not-allowed"
                 : "bg-blue-600 hover:bg-blue-700 text-white"

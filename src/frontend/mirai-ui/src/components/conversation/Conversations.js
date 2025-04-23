@@ -75,22 +75,28 @@ const Conversations = () => {
   };
 
   return (
-    <div className="flex h-full bg-gray-800">
+    <div className="flex flex-col md:flex-row h-full bg-gray-800">
       {/* Conversations List Panel */}
-      <div className="w-1/3 border-r border-gray-700 p-4 overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-bold text-white">Conversations</h3>
+      <div
+        className={`w-full md:w-1/3 border-b md:border-b-0 md:border-r border-gray-700 p-3 md:p-4 overflow-y-auto ${
+          selectedConversation ? "hidden md:block" : "block"
+        }`}
+      >
+        <div className="flex justify-between items-center mb-3 md:mb-4">
+          <h3 className="text-base md:text-xl font-bold text-white">
+            Conversations
+          </h3>
           <button
             onClick={handleNewConversation}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 md:px-4 md:py-2 rounded-md text-xs md:text-base"
           >
-            New Conversation
+            New
           </button>
         </div>
 
         {/* Error message */}
         {error && (
-          <div className="bg-red-500 text-white p-2 rounded mb-4">
+          <div className="bg-red-500 text-white p-2 rounded mb-3 md:mb-4 text-xs md:text-sm">
             {error}
             <button className="ml-2 font-bold" onClick={() => setError(null)}>
               ×
@@ -100,11 +106,11 @@ const Conversations = () => {
 
         {/* Conversations list */}
         {loading ? (
-          <div className="text-center text-gray-400 py-10">
+          <div className="text-center text-gray-400 py-6 md:py-10 text-sm md:text-base">
             Loading conversations...
           </div>
         ) : conversations.length === 0 ? (
-          <div className="text-center text-gray-400 py-10">
+          <div className="text-center text-gray-400 py-6 md:py-10 text-sm md:text-base">
             No conversations yet. Start a new one!
           </div>
         ) : (
@@ -112,7 +118,7 @@ const Conversations = () => {
             {conversations.map((conversation) => (
               <li
                 key={conversation.conversation_uid}
-                className={`p-3 rounded-md cursor-pointer ${
+                className={`p-2 md:p-3 rounded-md cursor-pointer ${
                   selectedConversation === conversation.conversation_uid
                     ? "bg-gray-600"
                     : "bg-gray-700 hover:bg-gray-600"
@@ -121,10 +127,10 @@ const Conversations = () => {
                   setSelectedConversation(conversation.conversation_uid)
                 }
               >
-                <div className="font-medium text-white">
+                <div className="font-medium text-white text-sm md:text-base">
                   {conversation.title}
                 </div>
-                <div className="text-sm text-gray-400">
+                <div className="text-xs md:text-sm text-gray-400">
                   {formatDate(
                     conversation.updated_at || conversation.created_at
                   )}
@@ -136,7 +142,11 @@ const Conversations = () => {
       </div>
 
       {/* Conversation Detail Panel */}
-      <div className="w-2/3 p-4">
+      <div
+        className={`w-full md:w-2/3 p-3 md:p-4 ${
+          selectedConversation ? "block" : "hidden md:block"
+        }`}
+      >
         {selectedConversation ? (
           <ConversationDetail
             conversationId={selectedConversation}
@@ -144,7 +154,7 @@ const Conversations = () => {
           />
         ) : (
           <div className="flex items-center justify-center h-full">
-            <h3 className="text-gray-400 text-center font-bold text-xl">
+            <h3 className="text-gray-400 text-center font-bold text-base md:text-xl">
               Select a conversation or start a new one
             </h3>
           </div>
@@ -153,10 +163,12 @@ const Conversations = () => {
 
       {/* New Conversation Modal */}
       {showNewConversationModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-3/4 max-w-2xl max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-white">Select an Agent</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-3 md:p-4">
+          <div className="bg-gray-800 rounded-lg p-3 md:p-6 w-full md:w-3/4 max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-3 md:mb-4">
+              <h3 className="text-base md:text-xl font-bold text-white">
+                Select an Agent
+              </h3>
               <button
                 onClick={() => setShowNewConversationModal(false)}
                 className="text-gray-400 hover:text-white text-xl"
@@ -166,19 +178,19 @@ const Conversations = () => {
             </div>
 
             {loadingAgents ? (
-              <div className="text-center text-gray-400 py-10">
+              <div className="text-center text-gray-400 py-6 md:py-10 text-sm md:text-base">
                 Loading agents...
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
                 {agents.map((agent) => (
                   <div
                     key={agent.agent_uid}
-                    className="bg-gray-700 p-4 rounded-lg hover:bg-gray-600 cursor-pointer"
+                    className="bg-gray-700 p-2 md:p-4 rounded-lg hover:bg-gray-600 cursor-pointer"
                     onClick={() => createConversation(agent.agent_uid)}
                   >
                     <div className="flex items-center mb-2">
-                      <div className="w-12 h-12 rounded-full bg-gray-500 mr-3 overflow-hidden">
+                      <div className="w-8 h-8 md:w-12 md:h-12 rounded-full bg-gray-500 mr-2 md:mr-3 overflow-hidden">
                         {agent.profile_picture_url ? (
                           <img
                             src={agent.profile_picture_url}
@@ -198,8 +210,10 @@ const Conversations = () => {
                         )}
                       </div>
                       <div>
-                        <h4 className="font-bold text-white">{agent.name}</h4>
-                        <p className="text-sm text-gray-400">
+                        <h4 className="font-bold text-white text-xs md:text-base">
+                          {agent.name}
+                        </h4>
+                        <p className="text-xs md:text-sm text-gray-400">
                           {agent.llm_config_name || "Default LLM"}
                         </p>
                       </div>
