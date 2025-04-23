@@ -8,7 +8,7 @@ import {
 } from "../services/globalConversationService";
 import { streamSpeech } from "../services/ttsService";
 
-const ChatNow = (config) => {
+const GlobalChat = (config) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setSending] = useState(false);
@@ -212,4 +212,4 @@ const ChatNow = (config) => {
   );
 };
 
-export default ChatNow;
+export default GlobalChat;

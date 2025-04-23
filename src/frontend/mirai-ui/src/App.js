@@ -1,16 +1,14 @@
 import "./tailwind.css";
 import { useState } from "react";
 import Sidebar from "./components/Sidebar";
-import ChatNowPage from "./pages/ChatNowPage";
+import ChatNowPage from "./pages/GlobalChatPage";
 import APIModuleConfigPage from "./pages/APIModuleConfigPage";
 import SettingsPage from "./pages/SettingsPage";
-import TestUIPage from "./pages/TestUIPage";
 import AgentConfigurationPage from "./pages/AgentConfigurationPage";
 import ConversationsPage from "./pages/ConversationsPage";
 
 function App() {
-  const [selectedTab, setSelectedTab] = useState("ChatNow");
-  const [APITest, setAPITest] = useState(false);
+  const [selectedTab, setSelectedTab] = useState("Conversations");
   const [config, setConfig] = useState({
     keywordModel: "Alexa",
     leopardModelPublicPath: "/models/leopard_params.pv",
@@ -30,17 +28,8 @@ function App() {
 
   return (
     <>
-      {APITest && (
-        <div className="w-full">
-          <TestUIPage />
-        </div>
-      )}
       <div className="flex h-screen">
-        <Sidebar
-          setSelectedTab={setSelectedTab}
-          APITest={APITest}
-          setAPITest={setAPITest}
-        />
+        <Sidebar setSelectedTab={setSelectedTab} />
         <div className="flex-1 bg-gray-800 overflow-auto">
           {selectedTab === "ChatNow" && <ChatNowPage config={config} />}
           {selectedTab === "Settings" && (

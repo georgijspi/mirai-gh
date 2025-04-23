@@ -1,6 +1,6 @@
 import React from "react";
 
-const Sidebar = ({ setSelectedTab, APITest, setAPITest }) => {
+const Sidebar = ({ setSelectedTab }) => {
   return (
     <>
       {/* Sidebar */}
@@ -35,30 +35,21 @@ const Sidebar = ({ setSelectedTab, APITest, setAPITest }) => {
               </li>
               <li>
                 <button
+                  onClick={() => setSelectedTab("GlobalChat")}
+                  className="flex items-center p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 group cursor-pointer w-full"
+                >
+                  <span className="ms-3">Global Chat</span>
+                </button>
+              </li>
+              <li>
+                <button
                   onClick={() => setSelectedTab("Conversations")}
                   className="flex items-center p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 group cursor-pointer w-full"
                 >
                   <span className="ms-3">Conversations</span>
                 </button>
               </li>
-              <li>
-                <button
-                  onClick={() => setSelectedTab("ChatNow")}
-                  className="flex items-center p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 group cursor-pointer w-full"
-                >
-                  <span className="ms-3">Chat Now</span>
-                </button>
-              </li>
             </ul>
-          </div>
-
-          <div className="space-y-4 px-2 pb-4">
-            <button
-              className="w-full py-2 px-4 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition"
-              onClick={() => setAPITest(!APITest)}
-            >
-              {APITest ? "Hide API Test" : "Show API Test"}
-            </button>
           </div>
         </div>
       </aside>
