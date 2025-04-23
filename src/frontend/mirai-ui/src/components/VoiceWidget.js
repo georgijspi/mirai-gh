@@ -21,7 +21,12 @@ const builtInKeywords = [
   "Terminator",
 ];
 
-export default function VoiceWidget({ onTranscription, config }) {
+export default function VoiceWidget({
+  onTranscription,
+  config: wrappedConfig,
+}) {
+  const config = wrappedConfig.config || wrappedConfig;
+
   const [initError, setInitError] = useState(null);
   const [wakeWordMode, setWakeWordMode] = useState(false);
   const [wakeWordDetected, setWakeWordDetected] = useState(false);
@@ -52,7 +57,6 @@ export default function VoiceWidget({ onTranscription, config }) {
     release: releaseWakeWord,
   } = usePorcupine();
 
-  // Access Key validation function
   const validateAccessKey = () => {
     if (!config.accessKey || config.accessKey === "") {
       setInitError(
@@ -63,71 +67,44 @@ export default function VoiceWidget({ onTranscription, config }) {
     return true;
   };
 
-  // Initialize Leopard STT engine
   const initSttEngine = async () => {
     try {
       if (!validateAccessKey()) return false;
-
-      console.log("Initializing Leopard with:", {
-        accessKey: config.accessKey ? "✓ Provided" : "✗ Missing",
-        modelPath: config.leopardModelPublicPath,
-      });
 
       await initStt(config.accessKey, {
         publicPath: config.leopardModelPublicPath,
       });
 
-      console.log("Leopard initialization successful");
       return true;
     } catch (e) {
-      console.error("Error initializing Leopard:", e);
       setInitError(`Error initializing Leopard STT: ${e.message || e}`);
       return false;
     }
   };
 
-  // Initialize Porcupine wake word engine
   const initWakeWordEngine = async () => {
     try {
       if (!validateAccessKey()) return false;
 
-      console.log("Initializing Porcupine with:", {
-        accessKey: config.accessKey ? "✓ Provided" : "✗ Missing",
-        useCustomKeyword: config.useCustomKeyword,
-        keywordModel: config.keywordModel,
-        customKeywordModelPath: config.customKeywordModelPath || "Not provided",
-        porcupineModelPublicPath: config.porcupineModelPublicPath,
-      });
-
-      // Determine which keyword to use
       let keyword;
 
       if (config.useCustomKeyword && config.customKeywordModelPath) {
-        // Use custom keyword model if provided
         keyword = {
           publicPath: config.customKeywordModelPath,
           label: config.customKeywordLabel || "Custom Keyword",
         };
-        console.log(
-          "Using custom keyword model from path:",
-          config.customKeywordModelPath
-        );
       } else if (builtInKeywords.includes(config.keywordModel)) {
-        // Use built-in keyword
         keyword = {
           builtin: config.keywordModel,
         };
-        console.log("Using built-in keyword:", config.keywordModel);
       }
 
       await initWakeWord(config.accessKey, [keyword], {
         publicPath: config.porcupineModelPublicPath,
       });
 
-      console.log("Porcupine wake word initialization successful");
       return true;
     } catch (e) {
-      console.error("Error initializing Porcupine:", e);
       setInitError(`Error with wake word: ${e.message || e}`);
       return false;
     }
@@ -135,8 +112,8 @@ export default function VoiceWidget({ onTranscription, config }) {
 
   // Initialize both engines when config changes
   useEffect(() => {
-    console.log("STT config changed:", config);
     const initialize = async () => {
+      console.log("Initializing engines...");
       setInitError(null);
       await initSttEngine();
       await initWakeWordEngine();
@@ -168,7 +145,6 @@ export default function VoiceWidget({ onTranscription, config }) {
   // Handle STT results
   useEffect(() => {
     if (sttResult !== null) {
-      console.log("Transcription result:", sttResult.transcript);
       if (sttResult.transcript && sttResult.transcript.trim() !== "") {
         onTranscription(sttResult.transcript);
 
@@ -177,7 +153,6 @@ export default function VoiceWidget({ onTranscription, config }) {
           stopSttRecording().then(() => {
             setWakeWordDetected(false);
             startWakeWordDetection();
-            console.log("Returned to wake word detection mode");
           });
         }
       }
@@ -187,24 +162,21 @@ export default function VoiceWidget({ onTranscription, config }) {
   // Handle wake word detection
   useEffect(() => {
     if (keywordDetection !== null && wakeWordMode && !wakeWordDetected) {
-      console.log("Wake word detected:", keywordDetection);
       setWakeWordDetected(true);
 
       // Stop wake word detection and start STT recording
       stopWakeWordDetection().then(() => {
-        console.log("Starting STT recording after wake word");
         startSttRecording();
 
-        // Set a timeout to stop recording if it goes too long (15 seconds max)
+        // Set a timeout to stop recording if it goes too long (5 seconds max)
         wakeWordTimeoutRef.current = setTimeout(() => {
           if (isSttRecording) {
-            console.log("Max recording time reached, stopping STT");
             stopSttRecording().then(() => {
               setWakeWordDetected(false);
               startWakeWordDetection();
             });
           }
-        }, 15000);
+        }, 5000);
       });
     }
   }, [keywordDetection, wakeWordMode, wakeWordDetected]);
@@ -212,12 +184,10 @@ export default function VoiceWidget({ onTranscription, config }) {
   // Handle errors
   useEffect(() => {
     if (sttError) {
-      console.error("Leopard error:", sttError);
       setInitError(`Error with Leopard: ${sttError.message || sttError}`);
     }
 
     if (wakeWordError) {
-      console.error("Porcupine error:", wakeWordError);
       setInitError(
         `Error with wake word: ${wakeWordError.message || wakeWordError}`
       );
@@ -238,7 +208,6 @@ export default function VoiceWidget({ onTranscription, config }) {
     try {
       if (wakeWordMode) {
         // Currently in wake word mode, turn it off completely
-        console.log("Disabling wake word mode");
         setWakeWordMode(false);
 
         if (isWakeWordListening) {
@@ -255,7 +224,6 @@ export default function VoiceWidget({ onTranscription, config }) {
         }
       } else if (isSttRecording) {
         // Currently directly recording STT, stop it
-        console.log("Stopping direct STT recording");
         await stopSttRecording();
       } else {
         // Not recording anything, decide which mode to enter
@@ -265,18 +233,15 @@ export default function VoiceWidget({ onTranscription, config }) {
 
         if (useWakeWord) {
           // Start wake word mode
-          console.log("Enabling wake word mode");
           setWakeWordMode(true);
           setWakeWordDetected(false);
           await startWakeWordDetection();
         } else {
           // Start direct STT recording
-          console.log("Starting direct STT recording");
           await startSttRecording();
         }
       }
     } catch (err) {
-      console.error("Error toggling voice input:", err);
       alert(`Error with voice input: ${err.message || err}`);
     }
   };
