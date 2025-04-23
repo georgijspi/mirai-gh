@@ -1,7 +1,7 @@
 import "./tailwind.css";
 import { useState } from "react";
 import Sidebar from "./components/Sidebar";
-import ChatNowPage from "./pages/GlobalChatPage";
+import GlobalChatPage from "./pages/GlobalChatPage";
 import APIModuleConfigPage from "./pages/APIModuleConfigPage";
 import SettingsPage from "./pages/SettingsPage";
 import AgentConfigurationPage from "./pages/AgentConfigurationPage";
@@ -31,13 +31,13 @@ function App() {
       <div className="flex h-screen">
         <Sidebar setSelectedTab={setSelectedTab} />
         <div className="flex-1 bg-gray-800 overflow-auto">
-          {selectedTab === "ChatNow" && <ChatNowPage config={config} />}
           {selectedTab === "Settings" && (
             <SettingsPage onConfigChange={handleConfigChange} config={config} />
           )}
           {selectedTab === "APIModuleConfig" && <APIModuleConfigPage />}
           {selectedTab === "AgentConfiguration" && <AgentConfigurationPage />}
           {selectedTab === "Conversations" && <ConversationsPage />}
+          {selectedTab === "GlobalChat" && <GlobalChatPage config={config} />}
         </div>
       </div>
     </>
