@@ -4,15 +4,17 @@ const Sidebar = ({ setSelectedTab }) => {
   return (
     <>
       {/* Sidebar */}
-      <aside className="top-0 left-0 z-40 h-screen w-64 bg-gray-900 text-white shadow-lg">
+      <aside className="top-0 left-0 z-40 h-screen w-64 bg-gray-900 text-white shadow-lg overflow-y-auto">
         <div className="h-full px-3 py-4 overflow-y-auto flex flex-col justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-center mb-6">MirAI Admin</h2>
-            <ul className="space-y-2 font-medium">
+            <h2 className="text-2xl font-bold text-center mb-6 mt-4 md:mt-0">
+              MirAI Admin
+            </h2>
+            <ul className="space-y-3 font-medium">
               <li>
                 <button
                   onClick={() => setSelectedTab("Settings")}
-                  className="flex items-center p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 group cursor-pointer w-full"
+                  className="flex items-center p-3 bg-gray-900 text-white rounded-lg hover:bg-gray-700 group cursor-pointer w-full transition-colors duration-200"
                 >
                   <span className="ms-3">Settings</span>
                 </button>
@@ -20,7 +22,7 @@ const Sidebar = ({ setSelectedTab }) => {
               <li>
                 <button
                   onClick={() => setSelectedTab("APIModuleConfig")}
-                  className="flex items-center p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 group cursor-pointer w-full"
+                  className="flex items-center p-3 bg-gray-900 text-white rounded-lg hover:bg-gray-700 group cursor-pointer w-full transition-colors duration-200"
                 >
                   <span className="ms-3">API Module Configuration</span>
                 </button>
@@ -28,7 +30,7 @@ const Sidebar = ({ setSelectedTab }) => {
               <li>
                 <button
                   onClick={() => setSelectedTab("AgentConfiguration")}
-                  className="flex items-center p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 group cursor-pointer w-full"
+                  className="flex items-center p-3 bg-gray-900 text-white rounded-lg hover:bg-gray-700 group cursor-pointer w-full transition-colors duration-200"
                 >
                   <span className="ms-3">Agent Configuration</span>
                 </button>
@@ -36,7 +38,7 @@ const Sidebar = ({ setSelectedTab }) => {
               <li>
                 <button
                   onClick={() => setSelectedTab("GlobalChat")}
-                  className="flex items-center p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 group cursor-pointer w-full"
+                  className="flex items-center p-3 bg-gray-900 text-white rounded-lg hover:bg-gray-700 group cursor-pointer w-full transition-colors duration-200"
                 >
                   <span className="ms-3">Global Chat</span>
                 </button>
@@ -44,7 +46,7 @@ const Sidebar = ({ setSelectedTab }) => {
               <li>
                 <button
                   onClick={() => setSelectedTab("Conversations")}
-                  className="flex items-center p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 group cursor-pointer w-full"
+                  className="flex items-center p-3 bg-gray-900 text-white rounded-lg hover:bg-gray-700 group cursor-pointer w-full transition-colors duration-200"
                 >
                   <span className="ms-3">Conversations</span>
                 </button>

@@ -116,7 +116,7 @@ const ModelManager = () => {
         <h5 className="text-lg font-semibold text-white mb-2">
           Pull New Model
         </h5>
-        <div className="flex space-x-2">
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
           <input
             type="text"
             value={newModelName}
@@ -165,71 +165,110 @@ const ModelManager = () => {
           Available Models
         </h5>
         <div className="bg-gray-800 rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-700">
-            <thead className="bg-gray-700">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
-                >
-                  Name
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
-                >
-                  Size
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
-                >
-                  Modified At
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider"
-                >
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-gray-800 divide-y divide-gray-700">
-              {models.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan="4"
-                    className="px-6 py-4 text-center text-gray-400"
-                  >
-                    No models available
-                  </td>
-                </tr>
-              ) : (
-                models.map((model) => (
-                  <tr key={model.name}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
-                      {model.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                      {formatSize(model.size)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                      {formatDate(model.modified_at)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+          {/* Table - Mobile view */}
+          <div className="block sm:hidden">
+            {models.length === 0 ? (
+              <div className="p-4 text-center text-gray-400">
+                No models available
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-700">
+                {models.map((model) => (
+                  <div key={model.name} className="p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="font-medium text-white">{model.name}</div>
                       <button
                         onClick={() => handleDeleteModel(model.name)}
                         disabled={isDeleting}
-                        className="text-red-500 hover:text-red-400 disabled:opacity-50"
+                        className="bg-red-500 text-white py-1 px-3 rounded-md hover:bg-red-600 transition disabled:opacity-50 text-sm"
                       >
                         Delete
                       </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm text-gray-300">
+                      <div>
+                        <span className="font-medium">Size:</span>{" "}
+                        {formatSize(model.size)}
+                      </div>
+                      <div>
+                        <span className="font-medium">Modified:</span>{" "}
+                        {formatDate(model.modified_at)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Table - Desktop view */}
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-700">
+              <thead className="bg-gray-700">
+                <tr>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                  >
+                    Name
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                  >
+                    Size
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                  >
+                    Modified At
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider"
+                  >
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-gray-800 divide-y divide-gray-700">
+                {models.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan="4"
+                      className="px-6 py-4 text-center text-gray-400"
+                    >
+                      No models available
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  models.map((model) => (
+                    <tr key={model.name}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
+                        {model.name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {formatSize(model.size)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {formatDate(model.modified_at)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => handleDeleteModel(model.name)}
+                          disabled={isDeleting}
+                          className="bg-red-500 text-white hover:bg-red-600 transition disabled:opacity-50 text-sm"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

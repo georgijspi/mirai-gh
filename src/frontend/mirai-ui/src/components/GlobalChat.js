@@ -152,14 +152,14 @@ const GlobalChat = (config) => {
 
   return (
     <div className="flex items-center justify-center h-full bg-gray-800">
-      <div className="w-4/5 bg-gray-700 p-6 rounded-lg shadow-lg flex flex-col h-[80%]">
-        <h3 className="text-2xl font-bold mb-4 text-white text-center">
+      <div className="w-full md:w-4/5 bg-gray-700 p-3 md:p-6 rounded-lg shadow-lg flex flex-col h-[90%] md:h-[80%]">
+        <h3 className="text-lg md:text-2xl font-bold mb-3 md:mb-4 text-white text-center">
           Global Chat
         </h3>
 
         {/* Error message */}
         {error && (
-          <div className="bg-red-500 text-white p-2 rounded my-2">
+          <div className="bg-red-500 text-white p-2 rounded my-2 text-sm md:text-base">
             {error}
             <button className="ml-2 font-bold" onClick={() => setError(null)}>
               ×
@@ -168,10 +168,10 @@ const GlobalChat = (config) => {
         )}
 
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-2 md:space-y-4">
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
-              <h1 className="text-gray-400 text-center font-bold text-xl">
+              <h1 className="text-gray-400 text-center font-bold text-base md:text-xl">
                 {Sending ? "Loading..." : "MirAI is ready to assist you!"}
               </h1>
             </div>
@@ -186,14 +186,14 @@ const GlobalChat = (config) => {
                 }`}
               >
                 <div
-                  className={`max-w-[70%] rounded-lg px-4 py-2 ${
+                  className={`max-w-[90%] md:max-w-[70%] rounded-lg px-3 md:px-4 py-2 ${
                     message.message_type === "user"
                       ? "bg-blue-600 text-white"
                       : "bg-gray-800 text-white"
                   }`}
                 >
                   <div className="flex justify-between items-center mb-1">
-                    <div className="font-semibold">
+                    <div className="font-semibold text-xs md:text-base">
                       {message.message_type === "user"
                         ? "You"
                         : message.metadata?.agent_name || "AI Assistant"}
@@ -203,7 +203,7 @@ const GlobalChat = (config) => {
                     </div>
                   </div>
 
-                  <div className="break-words whitespace-pre-wrap">
+                  <div className="break-words whitespace-pre-wrap text-xs md:text-base">
                     {message.content}
                   </div>
 
@@ -211,7 +211,7 @@ const GlobalChat = (config) => {
                     message.audio_stream_url && (
                       <button
                         onClick={() => handlePlayAudio(message)}
-                        className="text-blu e-300 hover:text-blue-200 text-xs mt-1 flex items-center"
+                        className="text-blue-300 hover:text-blue-200 text-xs mt-1 flex items-center"
                       >
                         <span>🔊 Play Audio</span>
                       </button>
@@ -224,18 +224,18 @@ const GlobalChat = (config) => {
         </div>
 
         {/* Message input */}
-        <div className="p-4 border-t border-gray-700">
+        <div className="p-2 md:p-4 border-t border-gray-700">
           <div className="flex">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type a message..."
-              className="flex-1 bg-gray-600 text-white rounded-l-lg p-3 outline-none resize-none"
+              className="flex-1 bg-gray-600 text-white rounded-l-lg p-2 md:p-3 outline-none resize-none text-xs md:text-base"
               rows="2"
               disabled={Sending}
             />
-            <div className="px-2 flex items-center">
+            <div className="px-1 md:px-2 flex items-center">
               <VoiceWidget
                 onTranscription={handleTranscription}
                 config={config}
@@ -244,7 +244,7 @@ const GlobalChat = (config) => {
             <button
               onClick={sendMessage}
               disabled={Sending || input.trim() === ""}
-              className={`px-4 rounded-r-lg ${
+              className={`px-3 md:px-4 rounded-r-lg ${
                 Sending || input.trim() === ""
                   ? "bg-gray-600 text-gray-400 cursor-not-allowed"
                   : "bg-blue-600 hover:bg-blue-700 text-white"
