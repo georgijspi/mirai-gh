@@ -15,6 +15,8 @@ from api.routers import (
     websocket,
     api_module,
 )
+from api.routers.wakeword_router import router as wakeword_router
+from api.routers.settings_router import router as settings_router
 from ttsModule.ttsModule import tts as tts_model
 from api.database import connect_to_mongodb, close_mongodb_connection
 
@@ -93,6 +95,8 @@ api_router.include_router(conversation.router)
 api_router.include_router(statistics.router)
 api_router.include_router(global_conversation.router)
 api_router.include_router(api_module.router)
+api_router.include_router(wakeword_router)
+api_router.include_router(settings_router)
 logger.info("Included all routers under /mirai/api")
 
 app.include_router(api_router)

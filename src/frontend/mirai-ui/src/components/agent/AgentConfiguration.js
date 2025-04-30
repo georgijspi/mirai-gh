@@ -345,24 +345,24 @@ const AgentConfiguration = () => {
                 <h3 className="text-xl font-bold text-gray-800">
                   {agent.name}
                 </h3>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => startEditingAgent(agent.agent_uid)}
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => startEditingAgent(agent.agent_uid)}
                     className="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => deleteAgent(agent.agent_uid)}
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => deleteAgent(agent.agent_uid)}
                     className="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
-                  >
-                    Delete
-                  </button>
-                </div>
+                >
+                  Delete
+                </button>
               </div>
+            </div>
 
               <div className="text-gray-600 mt-2 mb-4 line-clamp-3 h-18 overflow-hidden">
-                {agent.personality_prompt}
+              {agent.personality_prompt}
               </div>
 
               <div className="mt-4 pt-3 border-t border-gray-200 text-sm text-gray-500 grid grid-cols-2 gap-2">
@@ -424,6 +424,36 @@ const AgentConfiguration = () => {
                     </span>
                   </div>
                 )}
+
+                {/* Wakeword information */}
+                <div className="col-span-2 flex items-center mt-2 space-x-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 mr-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                    />
+                  </svg>
+                  <div className="flex flex-col">
+                    <span className="text-sm text-gray-600">
+                      Wakeword: {agent.wakeword_type === 'default' ? (
+                        <span className="font-medium">{agent.built_in_wakeword || 'Default'}</span>
+                      ) : (
+                        <span className="text-blue-500">Custom Model</span>
+                      )}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      Sensitivity: {agent.wakeword_sensitivity || 0.5}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

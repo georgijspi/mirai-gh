@@ -16,67 +16,62 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/statistics", tags=["Statistics"])
 
 
-@router.get("/messages", response_model=Dict[str, Any])
+@router.get("/messages")
 async def get_message_statistics(
-    llm: Optional[str] = Query(None, description="Filter by LLM config UID"),
-    agent: Optional[str] = Query(None, description="Filter by agent UID"),
-    current_user: dict = Depends(get_current_user),
-):
-    """Get statistics about messages, including likes and dislikes."""
-    try:
-        counts = await get_message_counts(llm_filter=llm, agent_filter=agent)
-        return {"status": "success", "data": counts}
-    except Exception as e:
-        logger.error(f"Error getting message statistics: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get message statistics: {str(e)}",
-        )
+    llm_filter: Optional[str] = Query(None, description="Filter by LLM config UID"),
+    agent_filter: Optional[str] = Query(None, description="Filter by agent UID")
+) -> Dict[str, int]:
+    """
+    Get message statistics including likes, dislikes, and total counts.
+    
+    Args:
+        llm_filter: Optional filter by LLM config UID
+        agent_filter: Optional filter by agent UID
+        
+    Returns:
+        Dictionary with total, likes, dislikes, and no_rating counts
+    """
+    return await get_message_counts(llm_filter, agent_filter)
 
 
-@router.get("/metrics", response_model=Dict[str, Any])
-async def get_metrics(current_user: dict = Depends(get_current_user)):
-    """Get 3D metrics of response time vs TTS duration vs message character count."""
-    try:
-        metrics = await get_response_metrics()
-        return {"status": "success", "data": metrics}
-    except Exception as e:
-        logger.error(f"Error getting metrics: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get metrics: {str(e)}",
-        )
+@router.get("/metrics")
+async def get_metrics() -> List[Dict[str, Any]]:
+    """
+    Get metrics data for response time, audio duration, and character count.
+    
+    Returns:
+        List of dictionaries containing response_time, audio_duration, and character_count
+    """
+    return await get_response_metrics()
 
 
-@router.get("/llm", response_model=Dict[str, Any])
+@router.get("/llm")
 async def get_llm_statistics(
-    llm_id: Optional[str] = Query(None, description="Filter by LLM config UID"),
-    current_user: dict = Depends(get_current_user),
-):
-    """Get performance statistics for LLM configurations."""
-    try:
-        stats = await get_llm_performance_stats(llm_filter=llm_id)
-        return {"status": "success", "data": stats}
-    except Exception as e:
-        logger.error(f"Error getting LLM statistics: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get LLM statistics: {str(e)}",
-        )
+    llm_filter: Optional[str] = Query(None, description="Filter by LLM config UID")
+) -> List[Dict[str, Any]]:
+    """
+    Get LLM performance statistics.
+    
+    Args:
+        llm_filter: Optional filter by LLM config UID
+        
+    Returns:
+        List of dictionaries with LLM performance statistics
+    """
+    return await get_llm_performance_stats(llm_filter)
 
 
-@router.get("/agent", response_model=Dict[str, Any])
+@router.get("/agent")
 async def get_agent_statistics(
-    agent_id: Optional[str] = Query(None, description="Filter by agent UID"),
-    current_user: dict = Depends(get_current_user),
-):
-    """Get performance statistics for agents."""
-    try:
-        stats = await get_agent_performance_stats(agent_filter=agent_id)
-        return {"status": "success", "data": stats}
-    except Exception as e:
-        logger.error(f"Error getting agent statistics: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get agent statistics: {str(e)}",
-        )
+    agent_filter: Optional[str] = Query(None, description="Filter by agent UID")
+) -> List[Dict[str, Any]]:
+    """
+    Get agent performance statistics.
+    
+    Args:
+        agent_filter: Optional filter by agent UID
+        
+    Returns:
+        List of dictionaries with agent performance statistics
+    """
+    return await get_agent_performance_stats(agent_filter)

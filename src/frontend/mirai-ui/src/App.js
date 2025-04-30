@@ -1,11 +1,79 @@
 import "./tailwind.css";
-import { useState, useEffect } from "react";
-import Sidebar from "./components/Sidebar";
-import GlobalChatPage from "./pages/GlobalChatPage";
+import { useState } from "react";
+import {
+  createTheme,
+  ThemeProvider,
+  Box,
+  CssBaseline,
+  Toolbar,
+} from "@mui/material";
+import Navigation from "./components/Navigation";
+import ChatNowPage from "./pages/ChatNowPage";
 import APIModuleConfigPage from "./pages/APIModuleConfigPage";
 import SettingsPage from "./pages/SettingsPage";
 import AgentConfigurationPage from "./pages/AgentConfigurationPage";
 import ConversationsPage from "./pages/ConversationsPage";
+import Statistics from "./pages/Statistics";
+
+// Create a dark theme for the entire app
+const darkTheme = createTheme({
+  palette: {
+    mode: "dark",
+    primary: {
+      main: "#90caf9",
+    },
+    secondary: {
+      main: "#ce93d8",
+    },
+    success: {
+      main: "#66bb6a",
+    },
+    error: {
+      main: "#f44336",
+    },
+    background: {
+      default: "#121212",
+      paper: "#1e1e1e",
+    },
+    text: {
+      primary: "#ffffff",
+      secondary: "#b0b0b0",
+    },
+  },
+  components: {
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#1e1e1e",
+          border: "1px solid #333",
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#1e1e1e",
+        },
+      },
+    },
+    MuiDrawer: {
+      styleOverrides: {
+        paper: {
+          backgroundColor: "#1a1a1a",
+        },
+      },
+    },
+    MuiListItemButton: {
+      styleOverrides: {
+        root: {
+          "&.Mui-selected": {
+            backgroundColor: "rgba(144, 202, 249, 0.16)",
+          },
+        },
+      },
+    },
+  },
+});
 
 function App() {
   const [selectedTab, setSelectedTab] = useState("Conversations");
@@ -49,60 +117,59 @@ function App() {
     }));
   };
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
+  const handleTabChange = (tab) => {
+    setSelectedTab(tab);
   };
 
-  const handleTabSelect = (tab) => {
-    setSelectedTab(tab);
-    if (isMobile) {
-      setSidebarOpen(false);
-    }
+  const handleToggleApiTest = () => {
+    setAPITest(!APITest);
   };
 
   return (
-    <>
-      <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-      />
+    <ThemeProvider theme={darkTheme}>
+      <CssBaseline />
+      <Box sx={{ display: "flex", minHeight: "100vh" }}>
+        <Navigation
+          activeTab={selectedTab}
+          onChangeTab={handleTabChange}
+          apiTestActive={APITest}
+          onToggleApiTest={handleToggleApiTest}
+        />
 
-      <div className="flex h-screen overflow-hidden">
-        {/* Mobile menu button */}
-        <button
-          onClick={toggleSidebar}
-          className="md:hidden fixed top-4 left-4 z-50 p-2 bg-gray-700 rounded-md text-white shadow-lg"
-          aria-label="Toggle menu"
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            p: { xs: 0, md: 3 },
+            backgroundColor:
+              selectedTab === "Statistics" ? "#121212" : "#121212",
+            overflow: "auto",
+            width: "100%",
+          }}
         >
-          {sidebarOpen ? "✕" : "☰"}
-        </button>
+          {/* Mobile toolbar spacer */}
+          <Toolbar
+            sx={{ display: { xs: "block", md: "none" }, minHeight: "64px" }}
+          />
 
-        <div
-          className={`${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } md:translate-x-0 fixed md:static z-40 transition-transform duration-300 ease-in-out`}
-        >
-          <Sidebar setSelectedTab={handleTabSelect} />
-        </div>
+          {APITest && <TestUIPage />}
 
-        {sidebarOpen && isMobile && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
-            onClick={() => setSidebarOpen(false)}
-          ></div>
-        )}
-
-        <div className="flex-1 bg-gray-800 overflow-auto md:ml-0 pt-16 md:pt-0">
-          {selectedTab === "Settings" && (
-            <SettingsPage onConfigChange={handleConfigChange} config={config} />
-          )}
-          {selectedTab === "APIModuleConfig" && <APIModuleConfigPage />}
-          {selectedTab === "AgentConfiguration" && <AgentConfigurationPage />}
-          {selectedTab === "Conversations" && <ConversationsPage />}
-          {selectedTab === "GlobalChat" && <GlobalChatPage config={config} />}
-        </div>
-      </div>
-    </>
+          <Box sx={{ maxWidth: "100%", height: "100%" }}>
+            {selectedTab === "ChatNow" && <ChatNowPage config={config} />}
+            {selectedTab === "Settings" && (
+              <SettingsPage
+                onConfigChange={handleConfigChange}
+                config={config}
+              />
+            )}
+            {selectedTab === "APIModuleConfig" && <APIModuleConfigPage />}
+            {selectedTab === "AgentConfiguration" && <AgentConfigurationPage />}
+            {selectedTab === "Conversations" && <ConversationsPage />}
+            {selectedTab === "Statistics" && <Statistics />}
+          </Box>
+        </Box>
+      </Box>
+    </ThemeProvider>
   );
 }
 
