@@ -4,6 +4,24 @@ import STTConfig from "../components/stt/STTConfig";
 import LLMConfig from "../components/llm/LLMConfig";
 import ModelManager from "../components/llm/ModelManager";
 import Settings from "../components/Settings";
+import {
+  Box,
+  Typography,
+  Tabs,
+  Tab,
+  Button,
+  Paper,
+  Container,
+  Divider,
+  useTheme,
+  useMediaQuery,
+} from "@mui/material";
+import {
+  SettingsVoice as VoiceIcon,
+  VpnKey as KeyIcon,
+  Memory as MemoryIcon,
+  CloudDownload as DownloadIcon,
+} from "@mui/icons-material";
 
 const SettingsPage = ({ onConfigChange, config }) => {
   const [keywordModel, setKeywordModel] = useState(
@@ -25,7 +43,10 @@ const SettingsPage = ({ onConfigChange, config }) => {
   const [useCustomKeyword, setUseCustomKeyword] = useState(
     config.useCustomKeyword || false
   );
-  const [activeTab, setActiveTab] = useState("voice");
+  const [activeTab, setActiveTab] = useState(0);
+  
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // Update component state when config changes
   useEffect(() => {
@@ -74,61 +95,35 @@ const SettingsPage = ({ onConfigChange, config }) => {
     onConfigChange(newConfig);
   };
 
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
+
   return (
-    <div className="flex-1 p-5">
-      <h3 className="text-2xl font-bold mb-6 text-white">Settings</h3>
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Typography variant="h4" component="h1" gutterBottom color="primary" fontWeight="bold">
+        Settings
+      </Typography>
+      
+      <Paper sx={{ mb: 4 }} elevation={3}>
+        <Tabs 
+          value={activeTab}
+          onChange={handleTabChange}
+          variant={isMobile ? "scrollable" : "fullWidth"}
+          scrollButtons={isMobile ? "auto" : false}
+          sx={{ borderBottom: 1, borderColor: 'divider' }}
+        >
+          <Tab icon={<VoiceIcon />} label="Voice Settings" />
+          <Tab icon={<KeyIcon />} label="Access Keys" />
+          <Tab icon={<MemoryIcon />} label="LLM Configuration" />
+          <Tab icon={<DownloadIcon />} label="Model Management" />
+        </Tabs>
+      </Paper>
 
-      <div className="mb-6">
-        <div className="border-b border-gray-700">
-          <nav className="-mb-px flex space-x-8">
-            <button
-              onClick={() => setActiveTab("voice")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "voice"
-                  ? "border-blue-500 text-white bg-blue-800"
-                  : "border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300"
-              }`}
-            >
-              Voice Settings
-            </button>
-            <button
-              onClick={() => setActiveTab("access")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "access"
-                  ? "border-blue-500 text-white bg-blue-800"
-                  : "border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300"
-              }`}
-            >
-              Access Keys
-            </button>
-            <button
-              onClick={() => setActiveTab("llm")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "llm"
-                  ? "border-blue-500 text-white bg-blue-800"
-                  : "border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300"
-              }`}
-            >
-              LLM Configuration
-            </button>
-            <button
-              onClick={() => setActiveTab("models")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "models"
-                  ? "border-blue-500 text-white bg-blue-800"
-                  : "border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300"
-              }`}
-            >
-              Model Management
-            </button>
-          </nav>
-        </div>
-      </div>
-
-      <div className={`space-y-8 ${activeTab === "models" ? "" : "max-w-md"}`}>
-        {activeTab === "voice" && (
-          <div className="space-y-8">
-            <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+      <Box sx={{ mt: 3 }}>
+        {activeTab === 0 && (
+          <Box>
+            <Paper sx={{ p: 3, mb: 3 }} elevation={2}>
               <WakeWordConfig
                 keywordModel={keywordModel}
                 setKeywordModel={setKeywordModel}
@@ -141,33 +136,33 @@ const SettingsPage = ({ onConfigChange, config }) => {
                 porcupineModelPublicPath={porcupineModelPublicPath}
                 setPorcupineModelPublicPath={setPorcupineModelPublicPath}
               />
-            </div>
+            </Paper>
 
-            <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+            <Paper sx={{ p: 3, mb: 3 }} elevation={2}>
               <STTConfig
                 accessKey={accessKey}
                 setAccessKey={setAccessKey}
               />
-            </div>
-          </div>
+            </Paper>
+            
+            <Button 
+              variant="contained" 
+              color="primary"
+              onClick={handleConfigChange}
+              sx={{ mt: 2 }}
+            >
+              Save Configuration
+            </Button>
+          </Box>
         )}
 
-        {activeTab === "access" && <Settings />}
+        {activeTab === 1 && <Settings />}
 
-        {activeTab === "llm" && <LLMConfig />}
+        {activeTab === 2 && <LLMConfig />}
 
-        {activeTab === "models" && <ModelManager />}
-
-        {activeTab !== "llm" && activeTab !== "models" && activeTab !== "access" && (
-          <button
-            onClick={handleConfigChange}
-            className="mt-6 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition"
-          >
-            Save Configuration
-          </button>
-        )}
-      </div>
-    </div>
+        {activeTab === 3 && <ModelManager />}
+      </Box>
+    </Container>
   );
 };
 

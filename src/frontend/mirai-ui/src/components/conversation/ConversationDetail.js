@@ -293,7 +293,7 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
 
       // Clear input if we're using the text input
       if (!content) {
-        setInput("");
+      setInput("");
       }
 
       await sendMessageService({
@@ -368,7 +368,7 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
 
   // Handle audio playback control (play/pause/stop)
   const handleAudioControl = (message, action) => {
-    const messageId = message.message_uid;
+      const messageId = message.message_uid;
 
     if (action === "play") {
       if (playingAudioId === messageId) {
@@ -396,16 +396,16 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
         }
 
         // Play the audio for this message
-        streamSpeech(messageId, conversationId)
-          .then((response) => response.blob())
-          .then((audioBlob) => {
-            const audioUrl = URL.createObjectURL(audioBlob);
-            playMessageAudio(audioUrl);
+      streamSpeech(messageId, conversationId)
+        .then((response) => response.blob())
+        .then((audioBlob) => {
+          const audioUrl = URL.createObjectURL(audioBlob);
+          playMessageAudio(audioUrl);
             setPlayingAudioId(messageId);
             setIsPaused(false);
-          })
-          .catch((error) => {
-            console.error("Error streaming audio:", error);
+        })
+        .catch((error) => {
+          console.error("Error streaming audio:", error);
             setPlayingAudioId(null);
             setIsPaused(false);
             // Signal audio playback failed
@@ -567,7 +567,7 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
     const isRatingLoading = ratingLoading[message.message_uid] || false;
     const isAnimating = animatingRatings[message.message_uid] || false;
 
-    return (
+  return (
       <Box
         key={message.message_uid || index}
         ref={index === messages.length - 1 ? messagesEndRef : null}
@@ -620,7 +620,7 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
             }}
           >
             <Typography variant="body1" component="div" color="text.primary">
-              {message.content}
+                  {message.content}
             </Typography>
           </Paper>
 
@@ -860,7 +860,7 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
           ) : (
             <MessageScrollArea>
               {messages.map((message, index) => renderMessage(message, index))}
-              <div ref={messagesEndRef} />
+        <div ref={messagesEndRef} />
             </MessageScrollArea>
           )}
         </MessageContainer>

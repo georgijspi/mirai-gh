@@ -7,6 +7,38 @@ import {
   fetchAvailableModels,
   fetchLLMConfigByUid,
 } from "../../services/llmService";
+import {
+  Typography,
+  Box,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  TextField,
+  Button,
+  Card,
+  CardContent,
+  FormControlLabel,
+  Checkbox,
+  Grid,
+  Alert,
+  CircularProgress,
+  Paper,
+  Divider,
+  Slider,
+  IconButton,
+  Switch,
+  Tooltip,
+} from "@mui/material";
+import {
+  Refresh as RefreshIcon,
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Save as SaveIcon,
+  Cancel as CancelIcon,
+  RestartAlt as RestartAltIcon,
+} from "@mui/icons-material";
 
 const defaultConfig = {
   name: "",
@@ -48,9 +80,18 @@ const LLMConfig = () => {
     try {
       setModelsLoading(true);
       const models = await fetchAvailableModels();
-      setAvailableModels(models);
+      
+      // Ensure models is an array
+      if (models && Array.isArray(models.models)) {
+        setAvailableModels(models.models);
+      } else if (models && Array.isArray(models)) {
+        setAvailableModels(models);
+      } else {
+        setAvailableModels([]);
+      }
     } catch (err) {
       console.error("Failed to load available models:", err);
+      setAvailableModels([]);
     } finally {
       setModelsLoading(false);
     }
@@ -61,13 +102,14 @@ const LLMConfig = () => {
       setLoading(true);
       setError(null);
       const data = await fetchLLMConfigs(includeArchived);
-      setConfigs(data);
+      setConfigs(Array.isArray(data) ? data : []);
       if (data.length > 0 && !selectedConfig) {
         setSelectedConfig(data[0]);
       }
     } catch (err) {
-      setError("Failed to load LLM configurations");
+      setError("Failed to load LLM configurations: " + (err.message || "Unknown error"));
       console.error(err);
+      setConfigs([]);
     } finally {
       setLoading(false);
     }
@@ -76,6 +118,10 @@ const LLMConfig = () => {
   const handleDelete = async () => {
     if (!selectedConfig) return;
 
+    if (!window.confirm(`Are you sure you want to delete the configuration "${selectedConfig.name}"?`)) {
+      return;
+    }
+
     try {
       setLoading(true);
       await deleteLLMConfig(selectedConfig.config_uid);
@@ -83,7 +129,7 @@ const LLMConfig = () => {
       await loadConfigs();
       setSelectedConfig(null);
     } catch (err) {
-      setError("Failed to delete configuration");
+      setError("Failed to delete configuration: " + (err.message || "Unknown error"));
       console.error(err);
     } finally {
       setLoading(false);
@@ -110,12 +156,12 @@ const LLMConfig = () => {
 
       // Also update the configs list to keep it in sync
       const updatedConfigs = await fetchLLMConfigs(includeArchived);
-      setConfigs(updatedConfigs);
+      setConfigs(Array.isArray(updatedConfigs) ? updatedConfigs : []);
 
       setIsEditing(false);
       setEditedConfig(null);
     } catch (err) {
-      setError("Failed to update configuration");
+      setError("Failed to update configuration: " + (err.message || "Unknown error"));
       console.error(err);
     } finally {
       setLoading(false);
@@ -144,12 +190,12 @@ const LLMConfig = () => {
 
       // Also update the configs list to keep it in sync
       const updatedConfigs = await fetchLLMConfigs(includeArchived);
-      setConfigs(updatedConfigs);
+      setConfigs(Array.isArray(updatedConfigs) ? updatedConfigs : []);
 
       setIsCreating(false);
       setNewConfig(defaultConfig);
     } catch (err) {
-      setError("Failed to create configuration");
+      setError("Failed to create configuration: " + (err.message || "Unknown error"));
       console.error(err);
     } finally {
       setLoading(false);
@@ -175,291 +221,355 @@ const LLMConfig = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-red-500 p-4">
-        {error}
-        <button
-          onClick={loadConfigs}
-          className="ml-4 text-blue-500 hover:text-blue-600"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
-
   const renderConfigForm = (config, isNew = false) => (
-    <>
-      <div>
-        <label className="block text-gray-300 mb-2">Name</label>
-        <input
-          type="text"
-          value={config.name}
-          onChange={(e) => handleInputChange("name", e.target.value)}
-          className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      <div>
-        <label className="block text-gray-300 mb-2">Model</label>
-        {modelsLoading ? (
-          <div className="animate-pulse h-10 bg-gray-700 rounded-md"></div>
-        ) : (
-          <select
-            value={config.model}
-            onChange={(e) => handleInputChange("model", e.target.value)}
-            className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select a model</option>
-            {availableModels.map((model) => (
-              <option key={model.name} value={model.name}>
-                {model.name}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
-
-      <div>
-        <label className="block text-gray-300 mb-2">Temperature</label>
-        <input
-          type="number"
-          value={config.temperature}
-          onChange={(e) =>
-            handleInputChange("temperature", parseFloat(e.target.value))
-          }
-          className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      <div>
-        <label className="block text-gray-300 mb-2">Max Tokens</label>
-        <input
-          type="number"
-          value={config.max_tokens}
-          onChange={(e) =>
-            handleInputChange("max_tokens", parseInt(e.target.value))
-          }
-          className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      <div>
-        <label className="block text-gray-300 mb-2">TTS Instructions</label>
-        <textarea
-          value={config.tts_instructions}
-          onChange={(e) =>
-            handleInputChange("tts_instructions", e.target.value)
-          }
-          className="w-full p-2 bg-gray-700 text-white rounded-md h-32 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-gray-300 mb-2">Top P</label>
-          <input
-            type="number"
-            value={config.top_p}
-            onChange={(e) =>
-              handleInputChange("top_p", parseFloat(e.target.value))
-            }
-            className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+    <Box sx={{ mt: 2 }}>
+      <Grid container spacing={3}>
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            label="Name"
+            variant="outlined"
+            value={config.name}
+            onChange={(e) => handleInputChange("name", e.target.value)}
           />
-        </div>
-        <div>
-          <label className="block text-gray-300 mb-2">Top K</label>
-          <input
+        </Grid>
+
+        <Grid item xs={12}>
+          <FormControl fullWidth>
+            <InputLabel>Model</InputLabel>
+            <Select
+              value={config.model}
+              label="Model"
+              onChange={(e) => handleInputChange("model", e.target.value)}
+              disabled={modelsLoading}
+            >
+              <MenuItem value="">
+                <em>Select a model</em>
+              </MenuItem>
+              {availableModels.map((model) => (
+                <MenuItem key={model.name} value={model.name}>
+                  {model.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <Typography gutterBottom>
+            Temperature: {config.temperature}
+          </Typography>
+          <Slider
+            value={config.temperature}
+            min={0}
+            max={2}
+            step={0.1}
+            onChange={(e, newValue) => handleInputChange("temperature", newValue)}
+            valueLabelDisplay="auto"
+          />
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <TextField
+            fullWidth
+            label="Max Tokens"
+            variant="outlined"
+            type="number"
+            value={config.max_tokens}
+            onChange={(e) => handleInputChange("max_tokens", parseInt(e.target.value))}
+          />
+        </Grid>
+
+        <Grid item xs={12} md={4}>
+          <TextField
+            fullWidth
+            label="Top P"
+            variant="outlined"
+            type="number"
+            inputProps={{ step: 0.1, min: 0, max: 1 }}
+            value={config.top_p}
+            onChange={(e) => handleInputChange("top_p", parseFloat(e.target.value))}
+          />
+        </Grid>
+
+        <Grid item xs={12} md={4}>
+          <TextField
+            fullWidth
+            label="Top K"
+            variant="outlined"
             type="number"
             value={config.top_k}
-            onChange={(e) =>
-              handleInputChange("top_k", parseInt(e.target.value))
-            }
-            className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onChange={(e) => handleInputChange("top_k", parseInt(e.target.value))}
           />
-        </div>
-        <div>
-          <label className="block text-gray-300 mb-2">Repeat Penalty</label>
-          <input
+        </Grid>
+
+        <Grid item xs={12} md={4}>
+          <TextField
+            fullWidth
+            label="Repeat Penalty"
+            variant="outlined"
             type="number"
+            inputProps={{ step: 0.1 }}
             value={config.repeat_penalty}
-            onChange={(e) =>
-              handleInputChange("repeat_penalty", parseFloat(e.target.value))
-            }
-            className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onChange={(e) => handleInputChange("repeat_penalty", parseFloat(e.target.value))}
           />
-        </div>
-        <div>
-          <label className="block text-gray-300 mb-2">Presence Penalty</label>
-          <input
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <TextField
+            fullWidth
+            label="Presence Penalty"
+            variant="outlined"
             type="number"
+            inputProps={{ step: 0.1 }}
             value={config.presence_penalty}
-            onChange={(e) =>
-              handleInputChange("presence_penalty", parseFloat(e.target.value))
-            }
-            className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onChange={(e) => handleInputChange("presence_penalty", parseFloat(e.target.value))}
           />
-        </div>
-        <div>
-          <label className="block text-gray-300 mb-2">Frequency Penalty</label>
-          <input
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <TextField
+            fullWidth
+            label="Frequency Penalty"
+            variant="outlined"
             type="number"
+            inputProps={{ step: 0.1 }}
             value={config.frequency_penalty}
-            onChange={(e) =>
-              handleInputChange("frequency_penalty", parseFloat(e.target.value))
-            }
-            className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onChange={(e) => handleInputChange("frequency_penalty", parseFloat(e.target.value))}
           />
-        </div>
-      </div>
-    </>
+        </Grid>
+
+        <Grid item xs={12}>
+          <Paper variant="outlined" sx={{ p: 3, mt: 2 }}>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="h6" color="primary" gutterBottom>
+                Text-to-Speech Settings
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+              <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                Define instructions for how the AI should format responses for better text-to-speech rendering. We recommend using our default guidelines for optimal results.
+              </Typography>
+            </Box>
+            <Box sx={{ position: 'relative', mb: 1 }}>
+              <TextField
+                fullWidth
+                label="TTS Instructions"
+                variant="outlined"
+                multiline
+                rows={8}
+                value={config.tts_instructions}
+                onChange={(e) => handleInputChange("tts_instructions", e.target.value)}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '& textarea': {
+                      fontSize: '0.9rem',
+                      lineHeight: 1.5,
+                    },
+                  },
+                }}
+                helperText="Instructions for the TTS system on how to read responses aloud. Describe any specific formatting or reading preferences."
+              />
+              <Button
+                variant="outlined"
+                size="small"
+                color="secondary"
+                startIcon={<RestartAltIcon />}
+                sx={{ 
+                  position: 'absolute', 
+                  top: 0, 
+                  right: 0, 
+                  zIndex: 1,
+                  borderRadius: '4px 4px 0 0',
+                  boxShadow: 1
+                }}
+                onClick={() => handleInputChange("tts_instructions", defaultConfig.tts_instructions)}
+              >
+                Reset to Recommended
+              </Button>
+            </Box>
+          </Paper>
+        </Grid>
+      </Grid>
+    </Box>
   );
 
   return (
-    <div>
-      <h4 className="text-xl font-bold mb-4 text-white">LLM Configuration</h4>
-      {message && (
-        <div className="mb-4 p-4 bg-green-500 text-white rounded-md">
-          {message}
-          <button
-            onClick={() => setMessage(null)}
-            className="ml-4 text-white hover:text-gray-200"
+    <Card variant="outlined" sx={{ bgcolor: 'background.paper', mb: 4 }}>
+      <CardContent>
+        <Typography variant="h5" component="h2" gutterBottom color="primary">
+          LLM Configuration
+        </Typography>
+
+        {message && (
+          <Alert 
+            severity="success" 
+            sx={{ mb: 3 }} 
+            onClose={() => setMessage(null)}
           >
-            Dismiss
-          </button>
-        </div>
-      )}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between mb-4">
-          <label className="flex items-center text-gray-300">
-            <input
-              type="checkbox"
-              checked={includeArchived}
-              onChange={(e) => setIncludeArchived(e.target.checked)}
-              className="mr-2"
-            />
-            Include Archived Configurations
-          </label>
-          <button
+            {message}
+          </Alert>
+        )}
+
+        {error && (
+          <Alert 
+            severity="error" 
+            sx={{ mb: 3 }} 
+            onClose={() => setError(null)}
+          >
+            {error}
+          </Alert>
+        )}
+
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={includeArchived}
+                onChange={(e) => setIncludeArchived(e.target.checked)}
+              />
+            }
+            label="Include Archived Configurations"
+          />
+          
+          <Button
+            startIcon={<RefreshIcon />}
             onClick={loadConfigs}
-            className="text-white hover:bg-blue-600"
+            variant="outlined"
+            size="small"
           >
             Refresh
-          </button>
-        </div>
+          </Button>
+        </Box>
 
-        {!isCreating && (
-          <div>
-            <label className="block text-gray-300 mb-2">
-              Select Configuration
-            </label>
-            <select
-              value={selectedConfig?.config_uid || ""}
-              onChange={(e) => {
-                const config = configs.find(
-                  (c) => c.config_uid === e.target.value
-                );
-                setSelectedConfig(config);
-                setIsEditing(false);
-                setEditedConfig(null);
-              }}
-              className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {configs.map((config) => (
-                <option key={config.config_uid} value={config.config_uid}>
-                  {config.name} {config.is_archived ? "(Archived)" : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <>
+            {!isCreating && (
+              <FormControl fullWidth sx={{ mb: 3 }}>
+                <InputLabel id="config-select-label">Select Configuration</InputLabel>
+                <Select
+                  labelId="config-select-label"
+                  value={selectedConfig?.config_uid || ""}
+                  label="Select Configuration"
+                  onChange={(e) => {
+                    const config = configs.find(
+                      (c) => c.config_uid === e.target.value
+                    );
+                    setSelectedConfig(config);
+                    setIsEditing(false);
+                    setEditedConfig(null);
+                  }}
+                  disabled={configs.length === 0}
+                >
+                  {configs.map((config) => (
+                    <MenuItem key={config.config_uid} value={config.config_uid}>
+                      {config.name} {config.is_archived ? "(Archived)" : ""}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
 
-        {isCreating ? (
-          <>
-            <h5 className="text-lg font-semibold text-white mb-4">
-              Create New Configuration
-            </h5>
-            {renderConfigForm(newConfig, true)}
-            <div className="flex space-x-4 mt-4">
-              <button
-                onClick={handleSaveNew}
-                className="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition"
-              >
-                Create
-              </button>
-              <button
-                onClick={handleCancelCreate}
-                className="bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 transition"
-              >
-                Cancel
-              </button>
-            </div>
-          </>
-        ) : selectedConfig ? (
-          <>
-            {isEditing ? (
-              <>
-                {renderConfigForm(editedConfig)}
-                <div className="flex space-x-4 mt-4">
-                  <button
-                    onClick={handleSave}
-                    className="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition"
+            {isCreating ? (
+              <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+                <Typography variant="h6" gutterBottom color="primary">
+                  Create New Configuration
+                </Typography>
+                {renderConfigForm(newConfig, true)}
+                <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={<SaveIcon />}
+                    onClick={handleSaveNew}
+                    disabled={loading}
                   >
-                    Save
-                  </button>
-                  <button
-                    onClick={handleCancel}
-                    className="bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 transition"
+                    Create
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<CancelIcon />}
+                    onClick={handleCancelCreate}
                   >
                     Cancel
-                  </button>
-                </div>
-              </>
+                  </Button>
+                </Box>
+              </Paper>
+            ) : selectedConfig ? (
+              <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  {isEditing ? "Edit Configuration" : selectedConfig.name}
+                </Typography>
+                {isEditing ? (
+                  <>
+                    {renderConfigForm(editedConfig)}
+                    <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<SaveIcon />}
+                        onClick={handleSave}
+                        disabled={loading}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        startIcon={<CancelIcon />}
+                        onClick={handleCancel}
+                      >
+                        Cancel
+                      </Button>
+                    </Box>
+                  </>
+                ) : (
+                  <>
+                    {renderConfigForm(selectedConfig)}
+                    <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<EditIcon />}
+                        onClick={handleEdit}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        startIcon={<DeleteIcon />}
+                        onClick={handleDelete}
+                      >
+                        Delete
+                      </Button>
+                    </Box>
+                  </>
+                )}
+              </Paper>
             ) : (
-              <>
-                {renderConfigForm(selectedConfig)}
-                <div className="flex space-x-4 mt-4">
-                  <button
-                    onClick={handleEdit}
-                    className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={handleDelete}
-                    className="bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 transition"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </>
+              <Alert severity="info" sx={{ mb: 3 }}>
+                No configurations available. Please create a new one.
+              </Alert>
+            )}
+
+            {!isCreating && (
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<AddIcon />}
+                onClick={handleCreate}
+                sx={{ mt: 2 }}
+              >
+                Create New Configuration
+              </Button>
             )}
           </>
-        ) : null}
-
-        {!isCreating && (
-          <button
-            onClick={handleCreate}
-            className="mt-4 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition"
-          >
-            Create New Configuration
-          </button>
         )}
-
-        <div className="bg-gray-800 p-5 rounded-lg mt-6">
-          <p className="text-gray-300">Performance Overview (Graph)</p>
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

@@ -4,6 +4,29 @@ import {
   pullModel,
   deleteModel,
 } from "../../services/llmService";
+import {
+  Box,
+  Typography,
+  TextField,
+  Button,
+  CircularProgress,
+  Alert,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
+  Card,
+  CardContent,
+  useTheme,
+  useMediaQuery,
+  Divider,
+} from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 
 const ModelManager = () => {
   const [models, setModels] = useState([]);
@@ -13,6 +36,9 @@ const ModelManager = () => {
   const [newModelName, setNewModelName] = useState("");
   const [isPulling, setIsPulling] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   useEffect(() => {
     loadModels();
@@ -23,10 +49,29 @@ const ModelManager = () => {
       setLoading(true);
       setError(null);
       const data = await fetchAvailableModels();
-      setModels(data);
+      
+      // Ensure models is always an array
+      if (data && Array.isArray(data.models)) {
+        setModels(data.models);
+      } else if (data && typeof data === 'object') {
+        // If data.models doesn't exist but we have an object response
+        // with 'name', 'modified_at', and 'size' properties
+        if (Array.isArray(data)) {
+          setModels(data);
+        } else {
+          // Handle object with possible models property
+          const modelsArray = data.models || [];
+          setModels(Array.isArray(modelsArray) ? modelsArray : []);
+        }
+      } else {
+        // Default to empty array if response format is unexpected
+        setModels([]);
+        setError("Unexpected response format from server");
+      }
     } catch (err) {
-      setError("Failed to load models");
+      setError("Failed to load models: " + (err.message || "Unknown error"));
       console.error(err);
+      setModels([]);
     } finally {
       setLoading(false);
     }
@@ -46,7 +91,7 @@ const ModelManager = () => {
       setNewModelName("");
       await loadModels();
     } catch (err) {
-      setError(`Failed to pull model: ${err.message}`);
+      setError(`Failed to pull model: ${err.message || "Unknown error"}`);
       console.error(err);
     } finally {
       setIsPulling(false);
@@ -69,214 +114,138 @@ const ModelManager = () => {
       setMessage(`Model "${modelName}" deleted successfully`);
       await loadModels();
     } catch (err) {
-      setError(`Failed to delete model: ${err.message}`);
+      setError(`Failed to delete model: ${err.message || "Unknown error"}`);
       console.error(err);
     } finally {
       setIsDeleting(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
   return (
-    <div>
-      <h4 className="text-xl font-bold mb-4 text-white">Model Management</h4>
+    <Card variant="outlined" sx={{ bgcolor: 'background.paper', mb: 4 }}>
+      <CardContent>
+        <Typography variant="h5" component="h2" gutterBottom color="primary">
+          Model Management
+        </Typography>
 
-      {message && (
-        <div className="mb-4 p-4 bg-green-500 text-white rounded-md">
-          {message}
-          <button
-            onClick={() => setMessage(null)}
-            className="ml-4 text-white hover:text-gray-200"
+        {message && (
+          <Alert 
+            severity="success" 
+            sx={{ mb: 3 }} 
+            onClose={() => setMessage(null)}
           >
-            Dismiss
-          </button>
-        </div>
-      )}
+            {message}
+          </Alert>
+        )}
 
-      {error && (
-        <div className="mb-4 p-4 bg-red-500 text-white rounded-md">
-          {error}
-          <button
-            onClick={() => setError(null)}
-            className="ml-4 text-white hover:text-gray-200"
+        {error && (
+          <Alert 
+            severity="error" 
+            sx={{ mb: 3 }} 
+            onClose={() => setError(null)}
           >
-            Dismiss
-          </button>
-        </div>
-      )}
+            {error}
+          </Alert>
+        )}
 
-      <div className="mb-6">
-        <h5 className="text-lg font-semibold text-white mb-2">
-          Pull New Model
-        </h5>
-        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-          <input
-            type="text"
-            value={newModelName}
-            onChange={(e) => setNewModelName(e.target.value)}
-            placeholder="Enter model name (e.g., llama2)"
-            className="flex-grow p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            onClick={handlePullModel}
-            disabled={isPulling}
-            className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition disabled:opacity-50"
-          >
-            {isPulling ? (
-              <span className="flex items-center">
-                <svg
-                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                Pulling...
-              </span>
-            ) : (
-              "Pull Model"
-            )}
-          </button>
-        </div>
-      </div>
+        <Box 
+          sx={{ 
+            mb: 4, 
+            p: 2, 
+            border: `1px solid ${theme.palette.divider}`,
+            borderRadius: 1
+          }}
+        >
+          <Typography variant="h6" gutterBottom>
+            Pull New Model
+          </Typography>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: 2 
+          }}>
+            <TextField
+              fullWidth
+              variant="outlined"
+              value={newModelName}
+              onChange={(e) => setNewModelName(e.target.value)}
+              placeholder="Enter model name (e.g., llama2)"
+              size="medium"
+              sx={{ flexGrow: 1 }}
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handlePullModel}
+              disabled={isPulling}
+              startIcon={isPulling ? <CircularProgress size={20} /> : <CloudDownloadIcon />}
+              sx={{ 
+                minWidth: isMobile ? '100%' : '120px',
+                height: isMobile ? 'auto' : 56
+              }}
+            >
+              {isPulling ? "Pulling..." : "Pull Model"}
+            </Button>
+          </Box>
+        </Box>
 
-      <div>
-        <h5 className="text-lg font-semibold text-white mb-2">
+        <Divider sx={{ mb: 3 }} />
+
+        <Typography variant="h6" gutterBottom>
           Available Models
-        </h5>
-        <div className="bg-gray-800 rounded-lg overflow-hidden">
-          {/* Table - Mobile view */}
-          <div className="block sm:hidden">
+        </Typography>
+        
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <>
             {models.length === 0 ? (
-              <div className="p-4 text-center text-gray-400">
-                No models available
-              </div>
+              <Alert severity="info">No models available</Alert>
             ) : (
-              <div className="divide-y divide-gray-700">
-                {models.map((model) => (
-                  <div key={model.name} className="p-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <div className="font-medium text-white">{model.name}</div>
-                      <button
-                        onClick={() => handleDeleteModel(model.name)}
-                        disabled={isDeleting}
-                        className="bg-red-500 text-white py-1 px-3 rounded-md hover:bg-red-600 transition disabled:opacity-50 text-sm"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm text-gray-300">
-                      <div>
-                        <span className="font-medium">Size:</span>{" "}
-                        {formatSize(model.size)}
-                      </div>
-                      <div>
-                        <span className="font-medium">Modified:</span>{" "}
-                        {formatDate(model.modified_at)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <TableContainer component={Paper} variant="outlined">
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Name</TableCell>
+                      <TableCell>Size</TableCell>
+                      <TableCell>Modified At</TableCell>
+                      <TableCell align="right">Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {models.map((model, index) => (
+                      <TableRow key={model.name || `model-${index}`}>
+                        <TableCell>{model.name}</TableCell>
+                        <TableCell>{formatSize(model.size)}</TableCell>
+                        <TableCell>{formatDate(model.modified_at)}</TableCell>
+                        <TableCell align="right">
+                          <IconButton
+                            color="error"
+                            onClick={() => handleDeleteModel(model.name)}
+                            disabled={isDeleting}
+                            size="small"
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             )}
-          </div>
-
-          {/* Table - Desktop view */}
-          <div className="hidden sm:block overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-700">
-              <thead className="bg-gray-700">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
-                  >
-                    Name
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
-                  >
-                    Size
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
-                  >
-                    Modified At
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider"
-                  >
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-gray-800 divide-y divide-gray-700">
-                {models.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan="4"
-                      className="px-6 py-4 text-center text-gray-400"
-                    >
-                      No models available
-                    </td>
-                  </tr>
-                ) : (
-                  models.map((model) => (
-                    <tr key={model.name}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
-                        {model.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                        {formatSize(model.size)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                        {formatDate(model.modified_at)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleDeleteModel(model.name)}
-                          disabled={isDeleting}
-                          className="bg-red-500 text-white hover:bg-red-600 transition disabled:opacity-50 text-sm"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
 // Helper function to format file size
 const formatSize = (bytes) => {
+  if (bytes === undefined || bytes === null) return "Unknown";
   if (bytes === 0) return "0 Bytes";
 
   const k = 1024;
@@ -294,7 +263,7 @@ const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleString();
   } catch (e) {
-    return dateString;
+    return dateString || "N/A";
   }
 };
 
