@@ -3,6 +3,7 @@ import WakeWordConfig from "../components/wakeword/WakeWordConfig";
 import STTConfig from "../components/stt/STTConfig";
 import LLMConfig from "../components/llm/LLMConfig";
 import ModelManager from "../components/llm/ModelManager";
+import Settings from "../components/Settings";
 
 const SettingsPage = ({ onConfigChange, config }) => {
   const [keywordModel, setKeywordModel] = useState(
@@ -41,7 +42,25 @@ const SettingsPage = ({ onConfigChange, config }) => {
     setUseCustomKeyword(config.useCustomKeyword || false);
   }, [config]);
 
+  // Update global config when local state changes
+  useEffect(() => {
+    const storedAccessKey = localStorage.getItem('picovoice_access_key');
+    if (storedAccessKey && storedAccessKey !== accessKey) {
+      setAccessKey(storedAccessKey);
+      
+      // Also update the parent component's config
+      const newConfig = {
+        ...config,
+        accessKey: storedAccessKey
+      };
+      onConfigChange(newConfig);
+    }
+  }, []);
+
   const handleConfigChange = () => {
+    // Save to localStorage for persistence across app
+    localStorage.setItem('picovoice_access_key', accessKey);
+    
     const newConfig = {
       keywordModel,
       leopardModelPublicPath,
@@ -71,6 +90,16 @@ const SettingsPage = ({ onConfigChange, config }) => {
               }`}
             >
               Voice Settings
+            </button>
+            <button
+              onClick={() => setActiveTab("access")}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "access"
+                  ? "border-blue-500 text-white bg-blue-800"
+                  : "border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300"
+              }`}
+            >
+              Access Keys
             </button>
             <button
               onClick={() => setActiveTab("llm")}
@@ -116,8 +145,6 @@ const SettingsPage = ({ onConfigChange, config }) => {
 
             <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
               <STTConfig
-                leopardModelPublicPath={leopardModelPublicPath}
-                setLeopardModelPublicPath={setLeopardModelPublicPath}
                 accessKey={accessKey}
                 setAccessKey={setAccessKey}
               />
@@ -125,11 +152,13 @@ const SettingsPage = ({ onConfigChange, config }) => {
           </div>
         )}
 
+        {activeTab === "access" && <Settings />}
+
         {activeTab === "llm" && <LLMConfig />}
 
         {activeTab === "models" && <ModelManager />}
 
-        {activeTab !== "llm" && activeTab !== "models" && (
+        {activeTab !== "llm" && activeTab !== "models" && activeTab !== "access" && (
           <button
             onClick={handleConfigChange}
             className="mt-6 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition"

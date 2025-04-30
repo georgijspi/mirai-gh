@@ -1,5 +1,5 @@
 import { WebSocketManager } from "../utils/websocketManager";
-import { fetchAPI, ENDPOINTS } from "../config/api.config";
+import { WS_BASE_URL } from "../config/api.config";
 
 /**
  * WebSocket service for managing real-time connections
@@ -8,6 +8,7 @@ class WebSocketService {
   constructor() {
     this.connections = new Map();
     this.messageHandlers = new Map();
+    this.baseUrl = WS_BASE_URL || this.getWebSocketUrl();
   }
 
   /**
@@ -29,6 +30,11 @@ class WebSocketService {
    * @returns {WebSocketManager} The WebSocket manager instance
    */
   connect(endpoint, messageHandler = null) {
+    if (!endpoint) {
+      console.error("WebSocketService: Cannot connect with undefined endpoint");
+      return null;
+    }
+
     // Check if we already have a connection for this endpoint
     if (this.connections.has(endpoint)) {
       const wsManager = this.connections.get(endpoint);
@@ -42,10 +48,9 @@ class WebSocketService {
     }
 
     // Create a new WebSocket connection
-    const wsUrl = this.getWebSocketUrl();
-    console.log(`Creating WebSocket manager with base URL: ${wsUrl}`);
+    console.log(`Creating WebSocket manager with base URL: ${this.baseUrl}`);
 
-    const wsManager = new WebSocketManager(wsUrl);
+    const wsManager = new WebSocketManager(this.baseUrl);
     wsManager.connect(endpoint);
 
     // Store the connection
@@ -64,6 +69,11 @@ class WebSocketService {
    * @param {string} endpoint - The WebSocket endpoint to disconnect from
    */
   disconnect(endpoint) {
+    if (!endpoint) {
+      console.warn("WebSocketService: Cannot disconnect with undefined endpoint");
+      return;
+    }
+
     if (this.connections.has(endpoint)) {
       const wsManager = this.connections.get(endpoint);
       wsManager.disconnect();
@@ -87,6 +97,11 @@ class WebSocketService {
    * @param {Function} handler - The message handler function
    */
   addMessageHandler(endpoint, handler) {
+    if (!endpoint) {
+      console.warn("WebSocketService: Cannot add handler with undefined endpoint");
+      return;
+    }
+
     if (this.connections.has(endpoint)) {
       const wsManager = this.connections.get(endpoint);
       wsManager.addMessageHandler(handler);
@@ -114,18 +129,3 @@ class WebSocketService {
 const websocketService = new WebSocketService();
 
 export default websocketService;
-
-export const disconnect = (endpoint) => {
-  if (this.connections.has(endpoint)) {
-    const wsManager = this.connections.get(endpoint);
-    wsManager.disconnect();
-    this.connections.delete(endpoint);
-  }
-};
-
-export const disconnectAll = () => {
-  for (const [endpoint, wsManager] of this.connections.entries()) {
-    wsManager.disconnect();
-    this.connections.delete(endpoint);
-  }
-};

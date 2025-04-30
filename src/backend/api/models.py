@@ -190,6 +190,12 @@ class LlmModelListResponse(BaseModel):
 # --- Agent Models ---
 
 
+class WakewordType(str, Enum):
+    """Enum for wakeword types."""
+    DEFAULT = "default"
+    CUSTOM = "custom"
+
+
 class AgentBase(BaseModel):
     """Base model for agent configuration."""
 
@@ -199,6 +205,10 @@ class AgentBase(BaseModel):
     llm_config_uid: str
     profile_picture_path: Optional[str] = None
     custom_voice_path: Optional[str] = None
+    wakeword_type: WakewordType = WakewordType.DEFAULT
+    wakeword_model_path: Optional[str] = None
+    built_in_wakeword: str = "Computer"  # Default built-in wakeword
+    wakeword_sensitivity: float = Field(default=0.5, ge=0.0, le=1.0)
 
 
 class AgentCreate(AgentBase):
@@ -224,6 +234,10 @@ class AgentUpdate(BaseModel):
     llm_config_uid: Optional[str] = None
     profile_picture_path: Optional[str] = None
     custom_voice_path: Optional[str] = None
+    wakeword_type: Optional[WakewordType] = None
+    wakeword_model_path: Optional[str] = None
+    built_in_wakeword: Optional[str] = None
+    wakeword_sensitivity: Optional[float] = None
 
 
 class AgentResponse(AgentBase):

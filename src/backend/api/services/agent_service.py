@@ -13,10 +13,8 @@ from ..models import AgentCreate, Agent, AgentUpdate
 
 logger = logging.getLogger(__name__)
 
-# Collections
 AGENT_COLLECTION = "agents"
 
-# Make sure we create the directories if they don't exist
 DATA_DIR = os.path.join(os.getcwd(), "..", "data")
 AGENT_DIR = os.path.join(DATA_DIR, "agent")
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -30,6 +28,10 @@ async def create_agent(
     llm_config_uid: str,
     profile_picture_path: Optional[str] = None,
     custom_voice_path: Optional[str] = None,
+    wakeword_type: str = "default",
+    wakeword_model_path: Optional[str] = None,
+    built_in_wakeword: str = "Computer",
+    wakeword_sensitivity: float = 0.5,
 ) -> Dict[str, Any]:
     """Create a new agent."""
     db = get_database()
@@ -52,6 +54,10 @@ async def create_agent(
         "llm_config_uid": llm_config_uid,
         "profile_picture_path": profile_picture_path,
         "custom_voice_path": custom_voice_path,
+        "wakeword_type": wakeword_type,
+        "wakeword_model_path": wakeword_model_path,
+        "built_in_wakeword": built_in_wakeword,
+        "wakeword_sensitivity": wakeword_sensitivity,
         "created_at": timestamp,
         "updated_at": timestamp,
     }
@@ -78,7 +84,7 @@ async def get_all_agents(include_archived=False) -> List[Dict[str, Any]]:
     db = get_database()
     agents = await db[AGENT_COLLECTION].find({}).to_list(length=100)
 
-    # Add profile picture URLs for each agent without /mirai/api prefix
+    # Add profile picture URLs
     for agent in agents:
         if agent.get("profile_picture_path"):
             agent["profile_picture_url"] = (
