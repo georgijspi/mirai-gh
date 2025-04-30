@@ -35,6 +35,20 @@ import {
 import ConversationDetail from "./ConversationDetail";
 
 // Styled components
+const ConversationListContainer = styled(Box)(({ theme }) => ({
+  height: '100vh',
+  maxHeight: '100vh',
+  overflow: 'hidden',
+  display: 'flex',
+  flexDirection: 'column',
+}));
+
+const ConversationListScroll = styled(Box)(({ theme }) => ({
+  flexGrow: 1,
+  overflow: 'auto',
+  padding: theme.spacing(0, 2),
+}));
+
 const ConversationListItem = styled(Card)(({ theme, isSelected }) => ({
   marginBottom: theme.spacing(1),
   backgroundColor: isSelected ? 'rgba(144, 202, 249, 0.16)' : theme.palette.background.paper,
@@ -146,19 +160,13 @@ const Conversations = () => {
 
   // Conversation list component
   const ConversationsList = () => (
-    <Box 
-      sx={{ 
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        p: 2
-      }}
-    >
+    <ConversationListContainer>
       <Box sx={{ 
         display: 'flex', 
         justifyContent: 'space-between',
         alignItems: 'center',
-        mb: 2
+        p: 2,
+        borderBottom: `1px solid ${theme.palette.divider}`,
       }}>
         <Typography variant="h5" fontWeight="bold" color="text.primary">
           Conversations
@@ -174,19 +182,17 @@ const Conversations = () => {
         </Button>
       </Box>
 
-      <Divider sx={{ mb: 2 }} />
-
       {error && (
         <Alert 
           severity="error" 
-          sx={{ mb: 2 }}
+          sx={{ m: 2 }}
           onClose={() => setError(null)}
         >
           {error}
         </Alert>
       )}
 
-      <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+      <ConversationListScroll>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
             <CircularProgress />
@@ -226,8 +232,8 @@ const Conversations = () => {
             </ConversationListItem>
           ))
         )}
-      </Box>
-    </Box>
+      </ConversationListScroll>
+    </ConversationListContainer>
   );
 
   // Render based on screen size
@@ -333,20 +339,25 @@ const Conversations = () => {
   return (
     <Box sx={{ 
       display: 'flex', 
-      height: '100%', 
-      backgroundColor: theme.palette.background.default 
+      height: '100vh',
+      maxHeight: '100vh',
+      backgroundColor: theme.palette.background.default,
+      overflow: 'hidden',
     }}>
-      {/* Conversations List Panel */}
+      {/* Conversations List Panel - fixed width */}
       <Paper 
         sx={{ 
           width: 320, 
           minWidth: 320,
-          height: '100%',
+          height: '100vh',
+          maxHeight: '100vh',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
           borderRadius: 0,
-          borderRight: `1px solid ${theme.palette.divider}`
+          borderRight: `1px solid ${theme.palette.divider}`,
+          flexShrink: 0,
+          position: 'relative', // Ensure proper positioning context
         }}
         elevation={0}
       >
@@ -356,9 +367,12 @@ const Conversations = () => {
       {/* Conversation Detail Panel */}
       <Box sx={{ 
         flexGrow: 1, 
-        height: '100%', 
+        height: '100vh',
+        maxHeight: '100vh',
         overflow: 'hidden',
-        display: 'flex'
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative', // Ensure proper positioning context
       }}>
         {selectedConversation ? (
           <ConversationDetail
@@ -372,7 +386,7 @@ const Conversations = () => {
             alignItems: 'center', 
             height: '100%',
             width: '100%',
-            p: 3
+            p: 3,
           }}>
             <Typography color="text.secondary" variant="h6" align="center">
               Select a conversation or start a new one

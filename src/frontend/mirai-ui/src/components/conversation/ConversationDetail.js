@@ -61,9 +61,16 @@ const MessageContainer = styled(Box)(({ theme }) => ({
   flexDirection: 'column',
   padding: theme.spacing(2),
   overflowY: 'auto',
-  height: 'calc(100% - 64px - 90px)', // Subtract header height and input area height
-  flexGrow: 0, // Don't let it grow beyond its height
-  flexShrink: 1, // Allow it to shrink
+  height: '100%',
+  width: '100%',
+  maxWidth: '100%',
+}));
+
+const MessageScrollArea = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  width: '100%',
+  marginTop: 'auto',
 }));
 
 const MessageInput = styled(TextField)(({ theme }) => ({
@@ -231,8 +238,20 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
 
   // Scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesEndRef.current && messageContainerRef.current) {
+      // Force scroll to bottom
+      messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
+    }
   }, [messages]);
+
+  // Scroll to bottom when loading completes
+  useEffect(() => {
+    if (!loading && messagesEndRef.current && messageContainerRef.current) {
+      setTimeout(() => {
+        messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
+      }, 100);
+    }
+  }, [loading]);
 
   // Focus title input when editing mode is activated
   useEffect(() => {
@@ -706,14 +725,15 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        height: '100%',
+        height: '100vh',
+        maxHeight: '100vh',
         width: '100%',
         position: 'relative',
         bgcolor: 'background.default',
-        overflow: 'hidden'
+        overflow: 'hidden',
       }}
     >
-      {/* Header */}
+      {/* Header - fixed height */}
       <AppBar 
         position="static" 
         color="transparent" 
@@ -721,7 +741,9 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
         sx={{ 
           borderBottom: '1px solid',
           borderColor: 'divider',
-          flexShrink: 0
+          flexShrink: 0,
+          height: '64px', // Keep header height fixed
+          zIndex: 10,
         }}
       >
         <Toolbar>
@@ -781,48 +803,70 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
         </Toolbar>
       </AppBar>
 
-      {/* Messages */}
-      <MessageContainer ref={messageContainerRef}>
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-            <CircularProgress />
-          </Box>
-        ) : messages.length === 0 ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-            <Typography color="text.secondary">
-              No messages yet. Start a conversation!
-            </Typography>
-          </Box>
-        ) : (
-          messages.map((message, index) => renderMessage(message, index))
-        )}
-        <div ref={messagesEndRef} />
-      </MessageContainer>
+      {/* Messages container - 75vh minus header */}
+      <Box sx={{ 
+        height: 'calc(75vh - 64px)', // 75% of viewport height minus header
+        overflow: 'hidden',
+        position: 'relative',
+        width: '100%',
+      }}>
+        <MessageContainer ref={messageContainerRef}>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+              <CircularProgress />
+            </Box>
+          ) : messages.length === 0 ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+              <Typography color="text.secondary">
+                No messages yet. Start a conversation!
+              </Typography>
+            </Box>
+          ) : (
+            <MessageScrollArea>
+              {messages.map((message, index) => renderMessage(message, index))}
+              <div ref={messagesEndRef} />
+            </MessageScrollArea>
+          )}
+        </MessageContainer>
+      </Box>
       
-      {/* Error message */}
+      {/* Error message - if present */}
       {error && (
-        <Box sx={{ p: 2, bgcolor: 'error.dark', flexShrink: 0 }}>
+        <Box sx={{ 
+          p: 2, 
+          bgcolor: 'error.dark', 
+          flexShrink: 0,
+          zIndex: 10,
+        }}>
           <Typography color="white">{error}</Typography>
         </Box>
       )}
 
-      {/* Input area */}
+      {/* Input area - 25vh height */}
       <Box
         sx={{
           p: 2,
           borderTop: '1px solid',
           borderColor: 'divider',
           bgcolor: 'background.paper',
-          flexShrink: 0,
-          position: 'relative'
+          height: '25vh', // 25% of viewport height
+          minHeight: '160px', // Minimum height to ensure microphone is visible
+          boxSizing: 'border-box',
+          position: 'relative', // Not absolute/fixed - natural document flow
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-start',
+          alignItems: 'stretch',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        {/* Text input */}
+        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: 2 }}>
           <MessageInput
             fullWidth
             placeholder="Type a message..."
             multiline
-            maxRows={4}
+            maxRows={3}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -841,11 +885,13 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
               )
             }}
             variant="outlined"
+            sx={{ width: '100%' }}
           />
         </Box>
         
+        {/* Microphone component */}
         {agent && (
-          <Box sx={{ mt: 1 }}>
+          <Box sx={{ width: '100%', flexGrow: 0 }}>
             <ConversationVoice
               agent={agent}
               accessKey={accessKey}
