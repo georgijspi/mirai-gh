@@ -4,7 +4,7 @@ import { fetchAPI, ENDPOINTS } from "../config/api.config";
 // Fetch all LLM configurations
 export const fetchLlmConfigs = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/llm/configs`);
+    const response = await fetch(`${API_BASE_URL}/llm/config`);
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -21,7 +21,7 @@ export const fetchLlmConfigs = async () => {
 // Fetch a single LLM configuration by UID
 export const fetchLlmConfigByUid = async (llmConfigUid) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/llm/configs/${llmConfigUid}`);
+    const response = await fetch(`${API_BASE_URL}/llm/config/${llmConfigUid}`);
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -38,7 +38,7 @@ export const fetchLlmConfigByUid = async (llmConfigUid) => {
 // Create a new LLM configuration
 export const createLlmConfig = async (configData) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/llm/configs`, {
+    const response = await fetch(`${API_BASE_URL}/llm/config`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -61,7 +61,7 @@ export const createLlmConfig = async (configData) => {
 // Update an existing LLM configuration
 export const updateLlmConfig = async (llmConfigUid, configData) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/llm/configs/${llmConfigUid}`, {
+    const response = await fetch(`${API_BASE_URL}/llm/config/${llmConfigUid}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -84,7 +84,7 @@ export const updateLlmConfig = async (llmConfigUid, configData) => {
 // Delete an LLM configuration
 export const deleteLlmConfig = async (llmConfigUid) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/llm/configs/${llmConfigUid}`, {
+    const response = await fetch(`${API_BASE_URL}/llm/config/${llmConfigUid}`, {
       method: 'DELETE',
     });
     

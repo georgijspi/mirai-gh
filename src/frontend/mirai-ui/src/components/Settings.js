@@ -1,11 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { getPicovoiceAccessKey, setPicovoiceAccessKey } from '../services/settingsService';
+import {
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Card,
+  CardContent,
+  Link,
+  Alert,
+  CircularProgress,
+  Paper,
+  Divider,
+  InputAdornment,
+  IconButton,
+  Tooltip,
+  Fade,
+} from '@mui/material';
+import {
+  Save as SaveIcon,
+  Key as KeyIcon,
+  Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon,
+  OpenInNew as OpenInNewIcon,
+} from '@mui/icons-material';
 
 const Settings = () => {
   const [accessKey, setAccessKey] = useState('');
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Load the access key on component mount
   useEffect(() => {
@@ -20,7 +45,7 @@ const Settings = () => {
         setError(null);
       } catch (err) {
         console.error('Error loading access key:', err);
-        setError('Failed to load access key from server');
+        setError('Failed to load access key from server: ' + (err.message || 'Unknown error'));
       } finally {
         setLoading(false);
       }
@@ -39,64 +64,118 @@ const Settings = () => {
       setError(null);
       setTimeout(() => {
         setSaved(false);
-      }, 3000);
+      }, 5000);
     } catch (err) {
       console.error('Error saving access key:', err);
-      setError('Failed to save access key to server');
+      setError('Failed to save access key to server: ' + (err.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
   };
 
+  const handleClickShowPassword = () => {
+    setShowPassword(!showPassword);
+  };
+
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-6">Settings</h2>
-      
-      <div className="mb-6">
-        <h3 className="text-xl font-semibold mb-4">Voice Recognition</h3>
-        <div className="bg-gray-800 p-4 rounded-lg">
-          <label className="block text-gray-300 mb-2">
-            Picovoice Access Key
-          </label>
-          <input
-            type="password"
-            value={accessKey}
-            onChange={(e) => setAccessKey(e.target.value)}
-            className="w-full p-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Enter your Picovoice access key here"
-            disabled={loading}
-          />
-          <p className="text-gray-400 text-sm mt-1">
-            Required for speech recognition and wakeword detection. Get your key at{" "}
-            <a
-              href="https://console.picovoice.ai/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-400 hover:underline"
+    <Card variant="outlined" sx={{ bgcolor: 'background.paper', mb: 4 }}>
+      <CardContent>
+        <Typography variant="h5" component="h2" gutterBottom color="primary">
+          API Access Keys
+        </Typography>
+
+        {saved && (
+          <Fade in={saved}>
+            <Alert 
+              severity="success" 
+              sx={{ mb: 3 }}
+              onClose={() => setSaved(false)}
             >
-              console.picovoice.ai
-            </a>
-          </p>
-          <button
+              Settings saved successfully! Please refresh the page for changes to take effect.
+            </Alert>
+          </Fade>
+        )}
+
+        {error && (
+          <Alert 
+            severity="error" 
+            sx={{ mb: 3 }}
+            onClose={() => setError(null)}
+          >
+            {error}
+          </Alert>
+        )}
+
+        <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <KeyIcon color="primary" sx={{ mr: 1 }} />
+            <Typography variant="h6" component="h3">
+              Voice Recognition
+            </Typography>
+          </Box>
+          
+          <Divider sx={{ mb: 3 }} />
+          
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Picovoice Access Key"
+              variant="outlined"
+              type={showPassword ? 'text' : 'password'}
+              value={accessKey}
+              onChange={(e) => setAccessKey(e.target.value)}
+              placeholder="Enter your Picovoice access key here"
+              disabled={loading}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label="toggle password visibility"
+                      onClick={handleClickShowPassword}
+                      edge="end"
+                    >
+                      {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+              Required for speech recognition and wakeword detection. Get your key at{" "}
+              <Link
+                href="https://console.picovoice.ai/"
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{ display: 'inline-flex', alignItems: 'center' }}
+              >
+                console.picovoice.ai
+                <OpenInNewIcon fontSize="small" sx={{ ml: 0.5 }} />
+              </Link>
+            </Typography>
+          </Box>
+          
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
             onClick={handleSave}
-            className={`mt-4 px-4 py-2 rounded ${
-              loading 
-                ? 'bg-gray-600 cursor-not-allowed' 
-                : 'bg-blue-600 hover:bg-blue-700 text-white'
-            }`}
             disabled={loading}
           >
-            {loading ? 'Saving...' : 'Save'}
-          </button>
-          {saved && (
-            <p className="text-green-500 mt-2">Settings saved successfully! Please refresh the page for changes to take effect.</p>
-          )}
-          {error && (
-            <p className="text-red-500 mt-2">{error}</p>
-          )}
-        </div>
-      </div>
-    </div>
+            {loading ? 'Saving...' : 'Save Access Key'}
+          </Button>
+        </Paper>
+
+        <Paper variant="outlined" sx={{ p: 3 }}>
+          <Typography variant="h6" component="h3" gutterBottom>
+            Other API Keys
+          </Typography>
+          <Divider sx={{ mb: 3 }} />
+          <Typography variant="body2" color="textSecondary">
+            Additional API keys for other services can be configured here in the future.
+          </Typography>
+        </Paper>
+      </CardContent>
+    </Card>
   );
 };
 
