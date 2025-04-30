@@ -1,5 +1,5 @@
 import "./tailwind.css";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   createTheme,
   ThemeProvider,
@@ -8,7 +8,7 @@ import {
   Toolbar,
 } from "@mui/material";
 import Navigation from "./components/Navigation";
-import ChatNowPage from "./pages/ChatNowPage";
+import GlobalChatPage from "./pages/GlobalChatPage";
 import APIModuleConfigPage from "./pages/APIModuleConfigPage";
 import SettingsPage from "./pages/SettingsPage";
 import AgentConfigurationPage from "./pages/AgentConfigurationPage";
@@ -121,20 +121,11 @@ function App() {
     setSelectedTab(tab);
   };
 
-  const handleToggleApiTest = () => {
-    setAPITest(!APITest);
-  };
-
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
       <Box sx={{ display: "flex", minHeight: "100vh" }}>
-        <Navigation
-          activeTab={selectedTab}
-          onChangeTab={handleTabChange}
-          apiTestActive={APITest}
-          onToggleApiTest={handleToggleApiTest}
-        />
+        <Navigation activeTab={selectedTab} onChangeTab={handleTabChange} />
 
         <Box
           component="main"
@@ -151,11 +142,8 @@ function App() {
           <Toolbar
             sx={{ display: { xs: "block", md: "none" }, minHeight: "64px" }}
           />
-
-          {APITest && <TestUIPage />}
-
           <Box sx={{ maxWidth: "100%", height: "100%" }}>
-            {selectedTab === "ChatNow" && <ChatNowPage config={config} />}
+            {selectedTab === "GlobalChat" && <GlobalChatPage config={config} />}
             {selectedTab === "Settings" && (
               <SettingsPage
                 onConfigChange={handleConfigChange}
