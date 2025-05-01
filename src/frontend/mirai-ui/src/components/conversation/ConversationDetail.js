@@ -284,7 +284,7 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
       setMessages((prev) => [...prev, userMessage]);
 
       if (!content) {
-        setInput("");
+      setInput("");
       }
 
       await sendMessageService({
@@ -394,7 +394,7 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
         return;
       }
       
-      const audioUrl = URL.createObjectURL(audioBlob);
+          const audioUrl = URL.createObjectURL(audioBlob);
       
       // Play the audio with the message ID for tracking
       playMessageAudio(audioUrl, messageId);
@@ -418,11 +418,11 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
   const formatTime = (dateString) => {
     if (!dateString) return "";
     try {
-      const date = new Date(dateString);
+    const date = new Date(dateString);
       if (isNaN(date.getTime())) {
         return "";
       }
-      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     } catch (error) {
       console.error("Error formatting date:", error);
       return "";
@@ -548,7 +548,7 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
 
     return (
       <Box
-        key={message.message_uid || index}
+              key={message.message_uid || index}
         sx={{
           display: "flex",
           flexDirection: "column",
@@ -832,7 +832,7 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
           ) : (
             <MessageScrollArea>
               {messages.map((message, index) => renderMessage(message, index))}
-              <div ref={messagesEndRef} />
+        <div ref={messagesEndRef} />
             </MessageScrollArea>
           )}
         </MessageContainer>

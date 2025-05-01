@@ -1,0 +1,19 @@
+stages:
+  - test
+
+variables:
+  # Disable production optimizations for tests
+  NODE_ENV: test
+  # Disable database connections for backend tests
+  DB_SKIP_CONNECTION: "true"
+
+# Include the backend tests configuration
+include:
+  - local: src/backend/tests/backend-tests.yml
+
+# For backwards compatibility - use the included file instead
+backend-test:
+  extends: backend-unit-tests
+  rules:
+    - changes:
+        - src/backend/**/*.py 
