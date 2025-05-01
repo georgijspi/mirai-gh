@@ -4,13 +4,16 @@ import { Box } from "@mui/material";
 
 const AgentConfigurationPage = () => {
   return (
-    <Box sx={{ 
-      width: '100%', 
-      minHeight: 'calc(100vh - 64px)', 
-      bgcolor: 'background.default',
-      overflowX: 'hidden'
-    }}>
-      <AgentConfiguration />
+    <Box
+      data-testid="agent-config-page"
+      sx={{
+        width: "100%",
+        minHeight: "calc(100vh - 64px)",
+        bgcolor: "background.default",
+        overflowX: "hidden",
+      }}
+    >
+      <AgentConfiguration data-testid="agent-configuration" />
     </Box>
   );
 };
