@@ -44,9 +44,9 @@ const SettingsPage = ({ onConfigChange, config }) => {
     config.useCustomKeyword || false
   );
   const [activeTab, setActiveTab] = useState(0);
-  
+
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   // Update component state when config changes
   useEffect(() => {
@@ -65,14 +65,14 @@ const SettingsPage = ({ onConfigChange, config }) => {
 
   // Update global config when local state changes
   useEffect(() => {
-    const storedAccessKey = localStorage.getItem('picovoice_access_key');
+    const storedAccessKey = localStorage.getItem("picovoice_access_key");
     if (storedAccessKey && storedAccessKey !== accessKey) {
       setAccessKey(storedAccessKey);
-      
+
       // Also update the parent component's config
       const newConfig = {
         ...config,
-        accessKey: storedAccessKey
+        accessKey: storedAccessKey,
       };
       onConfigChange(newConfig);
     }
@@ -80,8 +80,8 @@ const SettingsPage = ({ onConfigChange, config }) => {
 
   const handleConfigChange = () => {
     // Save to localStorage for persistence across app
-    localStorage.setItem('picovoice_access_key', accessKey);
-    
+    localStorage.setItem("picovoice_access_key", accessKey);
+
     const newConfig = {
       keywordModel,
       leopardModelPublicPath,
@@ -101,17 +101,23 @@ const SettingsPage = ({ onConfigChange, config }) => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom color="primary" fontWeight="bold">
+      <Typography
+        variant="h4"
+        component="h1"
+        gutterBottom
+        color="primary"
+        fontWeight="bold"
+      >
         Settings
       </Typography>
-      
+
       <Paper sx={{ mb: 4 }} elevation={3}>
-        <Tabs 
+        <Tabs
           value={activeTab}
           onChange={handleTabChange}
           variant={isMobile ? "scrollable" : "fullWidth"}
           scrollButtons={isMobile ? "auto" : false}
-          sx={{ borderBottom: 1, borderColor: 'divider' }}
+          sx={{ borderBottom: 1, borderColor: "divider" }}
         >
           <Tab icon={<VoiceIcon />} label="Voice Settings" />
           <Tab icon={<KeyIcon />} label="Access Keys" />
@@ -122,7 +128,7 @@ const SettingsPage = ({ onConfigChange, config }) => {
 
       <Box sx={{ mt: 3 }}>
         {activeTab === 0 && (
-          <Box>
+          <Box data-testid="voice-settings-content">
             <Paper sx={{ p: 3, mb: 3 }} elevation={2}>
               <WakeWordConfig
                 keywordModel={keywordModel}
@@ -139,28 +145,38 @@ const SettingsPage = ({ onConfigChange, config }) => {
             </Paper>
 
             <Paper sx={{ p: 3, mb: 3 }} elevation={2}>
-              <STTConfig
-                accessKey={accessKey}
-                setAccessKey={setAccessKey}
-              />
+              <STTConfig accessKey={accessKey} setAccessKey={setAccessKey} />
             </Paper>
-            
-            <Button 
-              variant="contained" 
+
+            <Button
+              variant="contained"
               color="primary"
               onClick={handleConfigChange}
               sx={{ mt: 2 }}
+              data-testid="save-config-button"
             >
               Save Configuration
             </Button>
           </Box>
         )}
 
-        {activeTab === 1 && <Settings />}
+        {activeTab === 1 && (
+          <Box data-testid="access-keys-content">
+            <Settings />
+          </Box>
+        )}
 
-        {activeTab === 2 && <LLMConfig />}
+        {activeTab === 2 && (
+          <Box data-testid="llm-config-content">
+            <LLMConfig />
+          </Box>
+        )}
 
-        {activeTab === 3 && <ModelManager />}
+        {activeTab === 3 && (
+          <Box data-testid="model-management-content">
+            <ModelManager />
+          </Box>
+        )}
       </Box>
     </Container>
   );
