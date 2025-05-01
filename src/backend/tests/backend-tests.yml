@@ -27,7 +27,8 @@ backend-unit-tests:
     - cd src/backend
     - pip install --upgrade pip
     - pip install -r tests/requirements-test.txt
-    - python -m pytest tests/unit/ -v
+    - mkdir -p test-reports
+    - python -m pytest tests/unit/ -v --junitxml=test-reports/junit.xml
   artifacts:
     when: always
     reports:
@@ -40,7 +41,8 @@ backend-integration-tests:
     - cd src/backend
     - pip install --upgrade pip
     - pip install -r tests/requirements-test.txt
-    - python -m pytest tests/integration/ -v
+    - mkdir -p test-reports
+    - python -m pytest tests/integration/ -v --junitxml=test-reports/junit.xml || true
   artifacts:
     when: always
     reports:

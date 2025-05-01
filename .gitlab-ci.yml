@@ -7,6 +7,13 @@ variables:
   # Disable database connections for backend tests
   DB_SKIP_CONNECTION: "true"
 
+cache:
+  key: 
+    prefix: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - src/frontend/mirai-ui/node_modules/
+    - src/backend/.venv/
+
 # Include the backend tests configuration
 include:
   - local: src/backend/tests/backend-tests.yml
