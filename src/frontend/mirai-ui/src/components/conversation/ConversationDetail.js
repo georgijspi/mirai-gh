@@ -47,12 +47,12 @@ import ConversationVoice from "./ConversationVoice";
 import { getPicovoiceAccessKey } from "../../services/settingsService";
 import { API_BASE_URL } from "../../config/apiConfig";
 
-// Create a custom CSS class for the bounce animation for rating icons
+// rating icons bounce animation 
 const bounceAnimation = {
   animation: "bounce 0.5s",
 };
 
-// Create a keyframes style for the bounce animation
+// keyframes style for the bounce animation
 const keyframes = `
 @keyframes bounce {
   0%, 20%, 50%, 80%, 100% {transform: scale(1);}
@@ -151,9 +151,11 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
           [data.message.message_uid]: data.message.rating || "none",
         }));
 
-        if (data.message.audio_stream_url) {
+        // Play audio with a slight delay to ensure the UI has updated
+        if (data.message.message_uid) {
           setTimeout(() => {
-            handlePlayAudio(data.message);
+            // Use the message UID to stream audio directly
+            playMessageAudioFromServer(data.message.message_uid);
           }, 500);
         }
 
@@ -209,7 +211,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
           setError("Conversation has no associated agent");
         }
 
-        // Setup WebSocket
         setupWebSocket();
 
         // Load access key from backend
@@ -264,7 +265,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
   }, [editingTitle]);
 
   const sendMessage = async (content) => {
-    // Use the passed content or the input state
     const messageText = content || input;
 
     if (messageText.trim() === "") return;
@@ -272,18 +272,19 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
     try {
       setSending(true);
 
-      // Add user message to UI immediately
+      // Add user message to UI immediately with a timestamp
       const userMessage = {
         content: messageText,
         message_type: "user",
         conversation_uid: conversationId,
         created_at: new Date().toISOString(),
+        message_uid: `temp-${Date.now()}`,
       };
+      
       setMessages((prev) => [...prev, userMessage]);
 
-      // Clear input if we're using the text input
       if (!content) {
-      setInput("");
+        setInput("");
       }
 
       await sendMessageService({
@@ -310,44 +311,28 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
   // Check if audio is playing and update UI state
   useEffect(() => {
     const checkAudioState = () => {
-      const audioState = getAudioPlaybackState();
-      setPlayingAudioId(audioState.currentAudioId);
-      setIsPaused(audioState.isPaused);
+      const { isPlaying, isPaused: audioPaused, currentAudioId } = getAudioPlaybackState();
+    
+      
+      if (isPlaying || audioPaused) {
+        if (currentAudioId && currentAudioId !== playingAudioId) {
+          setPlayingAudioId(currentAudioId);
+        }
+      } else if (!isPlaying && !audioPaused) {
+        if (!isPaused) {
+          setPlayingAudioId(null);
+        }
+      }
+      
+      if (audioPaused !== isPaused) {
+        setIsPaused(audioPaused);
+      }
     };
-
-    checkAudioState();
 
     const intervalId = setInterval(checkAudioState, 500);
     
     return () => clearInterval(intervalId);
-  }, []);
-
-  useEffect(() => {
-    const handlePlaybackStart = () => {
-      const audioState = getAudioPlaybackState();
-      setPlayingAudioId(audioState.currentAudioId);
-      setIsPaused(false);
-    };
-
-    const handlePlaybackEnd = () => {
-      setIsPaused(false);
-      // We don't reset playingAudioId here to keep the UI controls visible
-    };
-
-    const handlePlaybackPaused = () => {
-      setIsPaused(true);
-    };
-
-    window.addEventListener("audioPlaybackStart", handlePlaybackStart);
-    window.addEventListener("audioPlaybackEnd", handlePlaybackEnd);
-    window.addEventListener("audioPlaybackPaused", handlePlaybackPaused);
-
-    return () => {
-      window.removeEventListener("audioPlaybackStart", handlePlaybackStart);
-      window.removeEventListener("audioPlaybackEnd", handlePlaybackEnd);
-      window.removeEventListener("audioPlaybackPaused", handlePlaybackPaused);
-    };
-  }, []);
+  }, [playingAudioId, isPaused]);
 
   const handleAudioControl = (message, action) => {
     if (!message || !message.message_uid) {
@@ -358,36 +343,66 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
       if (action === "toggle") {
         if (isPaused) {
           resumeCurrentAudio();
+          setIsPaused(false);
         } else {
           pauseCurrentAudio();
+          setIsPaused(true);
         }
       } else if (action === "stop") {
         stopCurrentAudio();
         setPlayingAudioId(null);
+        setIsPaused(false);
       }
     } else {
       if (message.message_uid) {
         if (playingAudioId) {
           stopCurrentAudio();
+          setPlayingAudioId(null);
+          setIsPaused(false);
         }
 
-        let audioUrl;
-        
-        if (message.audio_stream_url) {
-          audioUrl = message.audio_stream_url;
-        } else if (message.message_uid && conversation) {
-          audioUrl = `${API_BASE_URL}/tts/stream/${message.message_uid}?conversation_uid=${conversation.conversation_uid}`;
-        } else {
-          console.error("Cannot play audio: Missing message_uid or conversation_uid");
-          return;
-        }
-
-        dispatchAudioEvent("customAudioPlayback", {
-          messageId: message.message_uid,
-        });
-        
-        playMessageAudio(audioUrl, message.message_uid);
+        playMessageAudioFromServer(message.message_uid);
       }
+    }
+  };
+
+  const playMessageAudioFromServer = async (messageId) => {
+    try {
+      dispatchAudioEvent("audioPlaybackPending");
+      
+      // Signal which message is about to play
+      dispatchAudioEvent("customAudioPlayback", {
+        messageId: messageId
+      });
+      
+      // Stream audio directly from the server
+      const response = await streamSpeech(messageId, conversationId);
+      
+      if (!response.ok) {
+        console.error("Audio streaming response not OK:", response.status);
+        dispatchAudioEvent("audioPlaybackFailed");
+        return;
+      }
+      
+      // Convert to audio blob
+      const audioBlob = await response.blob();
+      
+      // Check if blob is valid audio
+      if (!audioBlob || audioBlob.type.indexOf('audio/') !== 0) {
+        console.error("Invalid audio blob type:", audioBlob?.type);
+        dispatchAudioEvent("audioPlaybackFailed");
+        return;
+      }
+      
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      // Play the audio with the message ID for tracking
+      playMessageAudio(audioUrl, messageId);
+      setPlayingAudioId(messageId);
+      setIsPaused(false);
+    } catch (error) {
+      console.error("Failed to play message audio:", error);
+      dispatchAudioEvent("audioPlaybackFailed");
     }
   };
 
@@ -401,8 +416,17 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
   };
 
   const formatTime = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return "";
+      }
+      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "";
+    }
   };
 
   if (loading && !conversation) {
@@ -416,16 +440,13 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
   const handleVoiceTranscription = (transcription) => {
     if (transcription.trim() === "") return;
 
-    // Send the transcribed message
     sendMessage(transcription);
   };
 
-  // Handle title edit start
   const handleTitleClick = () => {
     setEditingTitle(true);
   };
 
-  // Handle title save
   const handleTitleSave = async () => {
     if (!titleInput.trim()) {
       setTitleInput(conversation.title || "Conversation");
@@ -460,7 +481,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
     }
   };
 
-  // Handle title input key events
   const handleTitleKeyDown = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -471,7 +491,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
     }
   };
 
-  // Handle message rating (like/dislike)
   const handleRateMessage = async (messageId, rating) => {
     if (ratingLoading[messageId]) {
       return;
@@ -481,6 +500,7 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
 
     const newRating = ratingStates[messageId] === rating ? "none" : rating;
 
+    // Update UI state immediately for better UX
     setRatingStates((prev) => ({
       ...prev,
       [messageId]: newRating,
@@ -501,10 +521,14 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
     }
 
     try {
-      await rateMessage(conversationId, messageId, newRating);
+      await rateMessage({
+        message_uid: messageId,
+        rating: newRating,
+      });
     } catch (error) {
       console.error("Error rating message:", error);
 
+      // Revert UI state on error
       setRatingStates((prev) => ({
         ...prev,
         [messageId]: ratingStates[messageId] || "none",
@@ -514,92 +538,68 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
     }
   };
 
-  // Render a chat message
   const renderMessage = (message, index) => {
     const isAgent = message.message_type === "agent";
     const hasAudio = isAgent;
     const isCurrentlyPlaying = message.message_uid === playingAudioId;
-    const messageDate = message.timestamp
-      ? new Date(message.timestamp)
-      : new Date();
+    
+    // Check all possible timestamp fields (created_at, timestamp, updated_at)
+    const timestampField = message.created_at || message.timestamp || message.updated_at;
 
     return (
       <Box
         key={message.message_uid || index}
         sx={{
           display: "flex",
-          flexDirection: isAgent ? "row" : "row-reverse",
+          flexDirection: "column",
+          alignItems: isAgent ? "flex-start" : "flex-end",
           mb: 2,
-          alignItems: "flex-start",
+          maxWidth: "90%",
+          alignSelf: isAgent ? "flex-start" : "flex-end",
         }}
       >
-        <Avatar
-          src={isAgent && agent?.profile_picture_path ? `${API_BASE_URL}/agent/${agent.agent_uid}/profile-picture` : undefined}
-          sx={{
-            bgcolor: isAgent ? "primary.main" : "secondary.main",
-            width: 40,
-            height: 40,
-            mr: isAgent ? 1 : 0,
-            ml: isAgent ? 0 : 1,
-          }}
-        >
-          {isAgent
-            ? agent?.name?.charAt(0).toUpperCase() || "A"
-            : "U"}
-        </Avatar>
+        <Box sx={{ display: "flex", alignItems: "flex-end", mb: 0.5 }}>
+          {isAgent && agent && (
+            <Avatar
+              src={
+                agent.profile_picture_url ||
+                (agent.profile_picture_path
+                  ? `${API_BASE_URL}${agent.profile_picture_path}`
+                  : undefined)
+              }
+              alt={agent.name}
+              sx={{
+                width: 40,
+                height: 40,
+                mr: 1,
+                bgcolor: "primary.dark",
+                fontWeight: "bold",
+                fontSize: "0.95rem",
+              }}
+            >
+              {agent.name ? agent.name.charAt(0).toUpperCase() : "A"}
+            </Avatar>
+          )}
 
-        <Box
-          sx={{
-            maxWidth: "75%",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
           <Paper
+            elevation={0}
             sx={{
-              p: 2,
-              bgcolor: isAgent ? "background.paper" : "primary.light",
-              color: isAgent ? "text.primary" : "primary.contrastText",
-              borderRadius: 2,
+              p: 1.5,
+              borderRadius: 2.5,
+              maxWidth: "85%",
+              backgroundColor: isAgent
+                ? "rgba(90, 90, 90, 0.5)"
+                : "rgba(25, 118, 210, 0.75)",
+              borderTopLeftRadius: isAgent ? 0 : undefined,
+              borderTopRightRadius: !isAgent ? 0 : undefined,
               position: "relative",
+              wordBreak: "break-word",
             }}
           >
-            <Typography variant="body1" component="div" sx={{ overflowWrap: "break-word", whiteSpace: "pre-wrap" }}>
+            <Typography variant="body1" component="div" color="text.primary">
               {message.content}
             </Typography>
-
-            {hasAudio && (
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  mt: 1,
-                  gap: 1,
-                }}
-              >
-                <IconButton
-                  size="small"
-                  onClick={() => handleAudioControl(message, "toggle")}
-                  color={isCurrentlyPlaying ? "primary" : "default"}
-                >
-                  {isCurrentlyPlaying && !isPaused ? (
-                    <PauseIcon fontSize="small" />
-                  ) : (
-                    <PlayArrowIcon fontSize="small" />
-                  )}
-                </IconButton>
-
-                {isCurrentlyPlaying && (
-                  <IconButton
-                    size="small"
-                    onClick={() => handleAudioControl(message, "stop")}
-                  >
-                    <StopIcon fontSize="small" />
-                  </IconButton>
-                )}
-              </Box>
-            )}
-
+            
             {isAgent && (
               <Box
                 sx={{
@@ -641,15 +641,74 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
               </Box>
             )}
           </Paper>
+
+          {/* Spacer for symmetry */}
+          {!isAgent && <Box sx={{ width: 40, height: 40, ml: 1 }} />}
+        </Box>
+
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: isAgent ? "flex-start" : "flex-end",
+            pl: isAgent ? 5 : 0,
+            pr: isAgent ? 0 : 5,
+            mt: 0.5,
+          }}
+        >
+          {/* Audio controls for agent messages */}
+          {isAgent && hasAudio && (
+            <Box sx={{ display: "flex", alignItems: "center", mr: 2 }}>
+              {isCurrentlyPlaying ? (
+                <>
+                  {isPaused ? (
+                    <IconButton
+                      size="small"
+                      onClick={() => handleAudioControl(message, "toggle")}
+                      color="primary"
+                      sx={{ padding: '6px' }}
+                    >
+                      <PlayArrowIcon sx={{ fontSize: '1.3rem' }} />
+                    </IconButton>
+                  ) : (
+                    <IconButton
+                      size="small"
+                      onClick={() => handleAudioControl(message, "toggle")}
+                      color="primary"
+                      sx={{ padding: '6px' }}
+                    >
+                      <PauseIcon sx={{ fontSize: '1.3rem' }} />
+                    </IconButton>
+                  )}
+                  <IconButton
+                    size="small"
+                    onClick={() => handleAudioControl(message, "stop")}
+                    color="primary"
+                    sx={{ padding: '6px' }}
+                  >
+                    <StopIcon sx={{ fontSize: '1.3rem' }} />
+                  </IconButton>
+                </>
+              ) : (
+                <IconButton
+                  size="small"
+                  onClick={() => handleAudioControl(message, "toggle")}
+                  color="primary"
+                  sx={{ padding: '6px' }}
+                >
+                  <PlayArrowIcon sx={{ fontSize: '1.3rem' }} />
+                </IconButton>
+              )}
+            </Box>
+          )}
+
+          {/* Message timestamp */}
           <Typography
             variant="caption"
             color="text.secondary"
-            sx={{
-              alignSelf: isAgent ? "flex-start" : "flex-end",
-              mt: 0.5,
-            }}
+            sx={{ fontSize: "0.7rem" }}
           >
-            {formatTime(message.timestamp)}
+            {formatTime(timestampField)}
           </Typography>
         </Box>
       </Box>
@@ -678,7 +737,7 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
           borderBottom: "1px solid",
           borderColor: "divider",
           flexShrink: 0,
-          height: "64px", // Keep header height fixed
+          height: "64px",
           zIndex: 10,
         }}
       >
@@ -739,7 +798,7 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
       {/* Messages container - 75vh minus header */}
       <Box
         sx={{
-          height: "calc(75vh - 64px)", // 75% of viewport height minus header
+          height: "calc(75vh - 64px)",
           overflow: "hidden",
           position: "relative",
           width: "100%",
@@ -800,10 +859,10 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
           borderTop: "1px solid",
           borderColor: "divider",
           bgcolor: "background.paper",
-          height: "25vh", // 25% of viewport height
-          minHeight: "160px", // Minimum height to ensure microphone is visible
+          height: "25vh",
+          minHeight: "160px",
           boxSizing: "border-box",
-          position: "relative", // Not absolute/fixed - natural document flow
+          position: "relative",
           width: "100%",
           display: "flex",
           flexDirection: "column",
