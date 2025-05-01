@@ -6,9 +6,9 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 # Ensure modules that require external libraries are mocked
-sys.modules['torch'] = MagicMock()
-sys.modules['torchaudio'] = MagicMock()
-sys.modules['TTS'] = MagicMock()
+sys.modules["torch"] = MagicMock()
+sys.modules["torchaudio"] = MagicMock()
+sys.modules["TTS"] = MagicMock()
 
 # Set test environment variable to skip database connections
 os.environ["DB_SKIP_CONNECTION"] = "true"
@@ -16,6 +16,7 @@ os.environ["DB_SKIP_CONNECTION"] = "true"
 
 class MockCursor:
     """Mock for AsyncIOMotorCursor that has sort and to_list methods."""
+
     def __init__(self, items=None):
         self.items = items or []
         self.sort_field = None
@@ -41,7 +42,7 @@ def mock_db():
     users = AsyncMock()
     llm_configs = AsyncMock()
     settings = AsyncMock()
-    
+
     mock_db = {
         "conversations": conversations,
         "messages": messages,
@@ -109,7 +110,7 @@ def sample_conversation(sample_agent):
 def sample_message(sample_conversation):
     """Sample message data for testing."""
     from api.models import MessageType, MessageRating
-    
+
     return {
         "message_uid": str(uuid.uuid4()),
         "conversation_uid": sample_conversation["conversation_uid"],
@@ -126,4 +127,4 @@ def sample_message(sample_conversation):
 def patch_database():
     """Patch the database connection."""
     with patch("api.database.client"), patch("api.database.db"):
-        yield 
+        yield

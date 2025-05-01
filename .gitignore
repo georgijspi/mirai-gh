@@ -26,3 +26,5 @@ src/backend/tests/manual/
 src/backend/tests/README.md
 src/backend/tests/setup_tests.py
 .venv/
+src/backend/.pip-cache
+src/backend/.pytest_cache
