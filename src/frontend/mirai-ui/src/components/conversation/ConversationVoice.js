@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLeopard } from '@picovoice/leopard-react';
 import { usePorcupine } from '@picovoice/porcupine-react';
-import { FaMicrophone, FaMicrophoneSlash } from 'react-icons/fa';
+import { FaMicrophone, FaMicrophoneSlash, FaLock, FaExclamationTriangle } from 'react-icons/fa';
 import { registerAudioCallback, unregisterAudioCallback } from '../../utils/audioUtils';
+import { Box, Typography, Alert, Button, Link } from '@mui/material';
 
 // Standard built-in keywords available in Picovoice
 const builtInKeywords = [
@@ -37,6 +38,7 @@ const ConversationVoice = ({
   const [statusMessage, setStatusMessage] = useState('');
   const [lastTranscriptTimestamp, setLastTranscriptTimestamp] = useState(null);
   const [isListeningPaused, setIsListeningPaused] = useState(false);
+  const [isSecureContext, setIsSecureContext] = useState(true);
   
   const recordingTimeoutRef = useRef(null);
   const silenceTimeoutRef = useRef(null);
@@ -77,6 +79,25 @@ const ConversationVoice = ({
     release: releaseWakeWord,
   } = usePorcupine();
 
+  // Check for secure context before initializing
+  useEffect(() => {
+    // Check if we're in a secure context (HTTPS or localhost)
+    const checkSecureContext = () => {
+      if (typeof window !== 'undefined') {
+        // window.isSecureContext is true for HTTPS and localhost
+        const secure = window.isSecureContext;
+        setIsSecureContext(secure);
+        
+        if (!secure) {
+          console.warn('Application is not running in a secure context. Microphone access will be restricted.');
+          setError('Voice features require a secure connection (HTTPS). See warning below for details.');
+        }
+      }
+    };
+    
+    checkSecureContext();
+  }, []);
+
   // Initialize on mount
   useEffect(() => {
     if (!accessKey) {
@@ -87,6 +108,11 @@ const ConversationVoice = ({
     // Do not try to initialize voice if agent is missing
     if (!agent) {
       setError('Missing agent configuration');
+      return;
+    }
+
+    // Don't initialize if not in a secure context
+    if (!isSecureContext) {
       return;
     }
 
@@ -678,6 +704,10 @@ const ConversationVoice = ({
       return statusMessage;
     }
     
+    if (!isSecureContext) {
+      return "Voice input requires a secure (HTTPS) connection";
+    }
+    
     if (!accessKey) return (
       <span>
         Access key required - 
@@ -705,8 +735,8 @@ const ConversationVoice = ({
   const getMicButtonClasses = () => {
     const baseClasses = "p-3 rounded-full flex items-center justify-center transition-all relative z-10";
     
-    // Disabled state
-    if (!isSttLoaded || !isWakeWordLoaded || !accessKey || transitioning) {
+    // Disabled state - include not being in a secure context
+    if (!isSttLoaded || !isWakeWordLoaded || !accessKey || transitioning || !isSecureContext) {
       return `${baseClasses} bg-gray-600 cursor-not-allowed opacity-50`;
     }
     
@@ -735,6 +765,61 @@ const ConversationVoice = ({
       resetInactivityTimeout();
     }
   }, [isSttRecording, sttResult]);
+
+  // Secure Context Warning component
+  const SecureContextWarning = () => {
+    // Get the current hostname
+    const hostname = window.location.hostname;
+    const protocol = window.location.protocol;
+    const port = window.location.port;
+    
+    // Construct HTTPS URL for the current location
+    const httpsUrl = `https://${hostname}${port ? ':' + port : ''}`;
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+    
+    return (
+      <Alert 
+        severity="warning" 
+        variant="outlined"
+        sx={{ 
+          mb: 2, 
+          display: 'flex', 
+          flexDirection: 'column',
+          alignItems: 'flex-start'
+        }}
+      >
+        <Typography variant="subtitle1" component="div" sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+          <FaExclamationTriangle style={{ marginRight: '8px' }} />
+          Voice Features Unavailable
+        </Typography>
+        
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          Speech recognition requires a secure connection (HTTPS). Your current connection is using HTTP, which browsers restrict from accessing the microphone.
+        </Typography>
+        
+        {isLocalhost ? (
+          <Typography variant="body2">
+            <strong>Solution for local development:</strong> Try using Firefox which is more permissive with localhost connections, or configure a local HTTPS certificate.
+          </Typography>
+        ) : (
+          <Box sx={{ mt: 1 }}>
+            <Button 
+              variant="outlined" 
+              size="small"
+              color="primary"
+              startIcon={<FaLock />}
+              component={Link}
+              href={httpsUrl}
+              target="_blank"
+              rel="noopener"
+            >
+              Switch to HTTPS
+            </Button>
+          </Box>
+        )}
+      </Alert>
+    );
+  };
 
   return (
     <div className="flex flex-col items-center justify-center w-full my-4">
@@ -797,6 +882,9 @@ const ConversationVoice = ({
         }
       `}</style>
       
+      {/* Show secure context warning only when not in a secure context */}
+      {!isSecureContext && <SecureContextWarning />}
+      
       <div className="relative h-20 w-20 flex items-center justify-center">
         {/* Visual transition effect for mode changes */}
         {transitioning && (
@@ -834,16 +922,18 @@ const ConversationVoice = ({
         {/* Main microphone button */}
         <button
           onClick={toggleMicrophone}
-          disabled={!isSttLoaded || !isWakeWordLoaded || !accessKey || transitioning}
+          disabled={!isSttLoaded || !isWakeWordLoaded || !accessKey || transitioning || !isSecureContext}
           className={getMicButtonClasses()}
           title={
-            !isSttLoaded || !isWakeWordLoaded || !accessKey
-              ? error || "Speech recognition not initialized"
-              : micEnabled
-                ? wakeWordDetected
-                  ? "Recording in progress"
-                  : `Listening for wake word "${agent?.built_in_wakeword || 'Computer'}"`
-                : "Enable voice input"
+            !isSecureContext
+              ? "Voice input requires HTTPS connection"
+              : !isSttLoaded || !isWakeWordLoaded || !accessKey
+                ? error || "Speech recognition not initialized"
+                : micEnabled
+                  ? wakeWordDetected
+                    ? "Recording in progress"
+                    : `Listening for wake word "${agent?.built_in_wakeword || 'Computer'}"`
+                  : "Enable voice input"
           }
         >
           {micEnabled && wakeWordDetected ? (

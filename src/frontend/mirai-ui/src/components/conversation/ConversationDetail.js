@@ -139,22 +139,18 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
     console.log("WebSocket message received:", data);
 
     if (data && data.type === "agent_response" && data.message) {
-      // Add the agent message to the chat if it's not already there
       setMessages((prev) => {
-        // Avoid adding duplicate messages
         if (prev.some((m) => m.message_uid === data.message.message_uid)) {
           return prev;
         }
 
         const updatedMessages = [...prev, data.message];
 
-        // Initialize rating state for the new message
         setRatingStates((prevRatings) => ({
           ...prevRatings,
           [data.message.message_uid]: data.message.rating || "none",
         }));
 
-        // Play the audio if available
         if (data.message.audio_stream_url) {
           setTimeout(() => {
             handlePlayAudio(data.message);
@@ -247,22 +243,16 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
     };
   }, [conversationId, setupWebSocket]);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
-    if (messagesEndRef.current && messageContainerRef.current) {
-      // Force scroll to bottom
-      messageContainerRef.current.scrollTop =
-        messageContainerRef.current.scrollHeight;
-    }
+    const scrollToBottom = () => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+    scrollToBottom();
   }, [messages]);
 
-  // Scroll to bottom when loading completes
   useEffect(() => {
-    if (!loading && messagesEndRef.current && messageContainerRef.current) {
-      setTimeout(() => {
-        messageContainerRef.current.scrollTop =
-          messageContainerRef.current.scrollHeight;
-      }, 100);
+    if (!loading) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
     }
   }, [loading]);
 
@@ -320,117 +310,94 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
   // Check if audio is playing and update UI state
   useEffect(() => {
     const checkAudioState = () => {
-      const { isPlaying, isPaused: audioPaused } = getAudioPlaybackState();
-      if (!isPlaying && !audioPaused) {
-        setPlayingAudioId(null);
-        setIsPaused(false);
-      } else if (audioPaused) {
-        setIsPaused(true);
-      }
+      const audioState = getAudioPlaybackState();
+      setPlayingAudioId(audioState.currentAudioId);
+      setIsPaused(audioState.isPaused);
     };
 
-    // Set up event listeners for audio playback
+    checkAudioState();
+
+    const intervalId = setInterval(checkAudioState, 500);
+    
+    return () => clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => {
     const handlePlaybackStart = () => {
-      // The actual message ID is set when handlePlayAudio is called
+      const audioState = getAudioPlaybackState();
+      setPlayingAudioId(audioState.currentAudioId);
       setIsPaused(false);
     };
 
     const handlePlaybackEnd = () => {
-      const { isPaused: audioPaused } = getAudioPlaybackState();
-      if (!audioPaused) {
-        setPlayingAudioId(null);
-      }
-      setIsPaused(audioPaused);
+      setIsPaused(false);
+      // We don't reset playingAudioId here to keep the UI controls visible
     };
 
     const handlePlaybackPaused = () => {
       setIsPaused(true);
     };
 
-    if (typeof window !== "undefined") {
-      window.addEventListener("audioPlaybackStart", handlePlaybackStart);
-      window.addEventListener("audioPlaybackEnd", handlePlaybackEnd);
-      window.addEventListener("audioPlaybackPaused", handlePlaybackPaused);
-    }
-
-    // Check audio state periodically
-    const interval = setInterval(checkAudioState, 1000);
+    window.addEventListener("audioPlaybackStart", handlePlaybackStart);
+    window.addEventListener("audioPlaybackEnd", handlePlaybackEnd);
+    window.addEventListener("audioPlaybackPaused", handlePlaybackPaused);
 
     return () => {
-      if (typeof window !== "undefined") {
-        window.removeEventListener("audioPlaybackStart", handlePlaybackStart);
-        window.removeEventListener("audioPlaybackEnd", handlePlaybackEnd);
-        window.removeEventListener("audioPlaybackPaused", handlePlaybackPaused);
-      }
-      clearInterval(interval);
+      window.removeEventListener("audioPlaybackStart", handlePlaybackStart);
+      window.removeEventListener("audioPlaybackEnd", handlePlaybackEnd);
+      window.removeEventListener("audioPlaybackPaused", handlePlaybackPaused);
     };
   }, []);
 
-  // Handle audio playback control (play/pause/stop)
   const handleAudioControl = (message, action) => {
-      const messageId = message.message_uid;
+    if (!message || !message.message_uid) {
+      return;
+    }
 
-    if (action === "play") {
-      if (playingAudioId === messageId) {
-        // If this message is already playing
+    if (playingAudioId === message.message_uid) {
+      if (action === "toggle") {
         if (isPaused) {
-          // If paused, resume playback
           resumeCurrentAudio();
-          setIsPaused(false);
         } else {
-          // If playing, pause it
           pauseCurrentAudio();
-          setIsPaused(true);
         }
-      } else {
-        // Only try to play if we have a message ID
-        if (!messageId) {
-          console.warn("No audio available for this message");
+      } else if (action === "stop") {
+        stopCurrentAudio();
+        setPlayingAudioId(null);
+      }
+    } else {
+      if (message.message_uid) {
+        if (playingAudioId) {
+          stopCurrentAudio();
+        }
+
+        let audioUrl;
+        
+        if (message.audio_stream_url) {
+          audioUrl = message.audio_stream_url;
+        } else if (message.message_uid && conversation) {
+          audioUrl = `${API_BASE_URL}/tts/stream/${message.message_uid}?conversation_uid=${conversation.conversation_uid}`;
+        } else {
+          console.error("Cannot play audio: Missing message_uid or conversation_uid");
           return;
         }
 
-        // Signal audio playback is about to start
-        if (typeof window !== "undefined") {
-          const event = new CustomEvent("audioPlaybackPending");
-          window.dispatchEvent(event);
-        }
-
-        // Play the audio for this message
-      streamSpeech(messageId, conversationId)
-        .then((response) => response.blob())
-        .then((audioBlob) => {
-          const audioUrl = URL.createObjectURL(audioBlob);
-          playMessageAudio(audioUrl);
-            setPlayingAudioId(messageId);
-            setIsPaused(false);
-        })
-        .catch((error) => {
-          console.error("Error streaming audio:", error);
-            setPlayingAudioId(null);
-            setIsPaused(false);
-            // Signal audio playback failed
-            if (typeof window !== "undefined") {
-              const event = new CustomEvent("audioPlaybackFailed");
-              window.dispatchEvent(event);
-            }
-          });
+        dispatchAudioEvent("customAudioPlayback", {
+          messageId: message.message_uid,
+        });
+        
+        playMessageAudio(audioUrl, message.message_uid);
       }
-    } else if (action === "pause") {
-      pauseCurrentAudio();
-      setIsPaused(true);
-    } else if (action === "resume") {
-      resumeCurrentAudio();
-      setIsPaused(false);
-    } else if (action === "stop") {
-      stopCurrentAudio();
-      setPlayingAudioId(null);
-      setIsPaused(false);
     }
   };
 
-  // Replace the existing handlePlayAudio with our new function
+  const dispatchAudioEvent = (eventName, data) => {
+    const event = new CustomEvent(eventName, { detail: data });
+    window.dispatchEvent(event);
+  };
+
   const handlePlayAudio = (message) => {
-    handleAudioControl(message, "play");
+    handleAudioControl(message, "toggle");
   };
 
   const formatTime = (dateString) => {
@@ -506,54 +473,43 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
 
   // Handle message rating (like/dislike)
   const handleRateMessage = async (messageId, rating) => {
-    // Don't allow rating if already in progress
-    if (ratingLoading[messageId]) return;
+    if (ratingLoading[messageId]) {
+      return;
+    }
 
-    try {
-      // Set loading state for this specific message
-      setRatingLoading((prev) => ({ ...prev, [messageId]: true }));
+    setRatingLoading((prev) => ({ ...prev, [messageId]: true }));
 
-      // If user clicks the same rating again, treat it as removing the rating
-      const newRating = ratingStates[messageId] === rating ? "none" : rating;
+    const newRating = ratingStates[messageId] === rating ? "none" : rating;
 
-      // Update local state immediately for better UX
-      setRatingStates((prev) => ({
+    setRatingStates((prev) => ({
+      ...prev,
+      [messageId]: newRating,
+    }));
+
+    if (newRating !== "none") {
+      setAnimatingRatings((prev) => ({
         ...prev,
-        [messageId]: newRating,
+        [messageId]: true,
       }));
 
-      // Set animating state if this is a new rating
-      if (newRating !== "none") {
+      setTimeout(() => {
         setAnimatingRatings((prev) => ({
           ...prev,
-          [messageId]: newRating,
+          [messageId]: false,
         }));
+      }, 500);
+    }
 
-        // Clear animation after it completes
-        setTimeout(() => {
-          setAnimatingRatings((prev) => {
-            const updated = { ...prev };
-            delete updated[messageId];
-            return updated;
-          });
-        }, 500); // Animation duration
-      }
-
-      // Call API to rate the message
-      await rateMessage({
-        message_uid: messageId,
-        rating: newRating,
-      });
+    try {
+      await rateMessage(conversationId, messageId, newRating);
     } catch (error) {
       console.error("Error rating message:", error);
-      // Revert the rating in case of an error
+
       setRatingStates((prev) => ({
         ...prev,
-        [messageId]: prev[messageId] || "none",
+        [messageId]: ratingStates[messageId] || "none",
       }));
-      setError(`Failed to rate message: ${error.message}`);
     } finally {
-      // Clear loading state
       setRatingLoading((prev) => ({ ...prev, [messageId]: false }));
     }
   };
@@ -561,183 +517,140 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
   // Render a chat message
   const renderMessage = (message, index) => {
     const isAgent = message.message_type === "agent";
-    const hasAudio = isAgent; // Agent messages should always have the potential for audio
-    const isPlaying = playingAudioId === message.message_uid;
-    const currentRating = ratingStates[message.message_uid] || "none";
-    const isRatingLoading = ratingLoading[message.message_uid] || false;
-    const isAnimating = animatingRatings[message.message_uid] || false;
+    const hasAudio = isAgent;
+    const isCurrentlyPlaying = message.message_uid === playingAudioId;
+    const messageDate = message.timestamp
+      ? new Date(message.timestamp)
+      : new Date();
 
-  return (
+    return (
       <Box
         key={message.message_uid || index}
-        ref={index === messages.length - 1 ? messagesEndRef : null}
         sx={{
           display: "flex",
-          flexDirection: "column",
-          alignItems: isAgent ? "flex-start" : "flex-end",
+          flexDirection: isAgent ? "row" : "row-reverse",
           mb: 2,
-          maxWidth: "90%",
-          alignSelf: isAgent ? "flex-start" : "flex-end",
+          alignItems: "flex-start",
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "flex-end", mb: 0.5 }}>
-          {isAgent && agent && (
-            <Avatar
-              src={
-                agent.profile_picture_url ||
-                (agent.profile_picture_path
-                  ? `${API_BASE_URL}${agent.profile_picture_path}`
-                  : undefined)
-              }
-              alt={agent.name}
-              sx={{
-                width: 32,
-                height: 32,
-                mr: 1,
-                bgcolor: "primary.dark",
-                fontWeight: "bold",
-                fontSize: "0.875rem",
-              }}
-            >
-              {agent.name ? agent.name.charAt(0).toUpperCase() : "A"}
-            </Avatar>
-          )}
-
-          <Paper
-            elevation={0}
-            sx={{
-              p: 1.5,
-              borderRadius: 2.5,
-              maxWidth: "85%",
-              backgroundColor: isAgent
-                ? "rgba(90, 90, 90, 0.5)"
-                : "rgba(25, 118, 210, 0.75)",
-              borderTopLeftRadius: isAgent ? 0 : undefined,
-              borderTopRightRadius: !isAgent ? 0 : undefined,
-              position: "relative",
-              wordBreak: "break-word",
-              // Removed animation style from here
-            }}
-          >
-            <Typography variant="body1" component="div" color="text.primary">
-                  {message.content}
-            </Typography>
-          </Paper>
-
-          {/* Spacer for symmetry */}
-          {!isAgent && <Box sx={{ width: 32, height: 32, ml: 1 }} />}
-        </Box>
+        <Avatar
+          src={isAgent && agent?.profile_picture_path ? `${API_BASE_URL}/agent/${agent.agent_uid}/profile-picture` : undefined}
+          sx={{
+            bgcolor: isAgent ? "primary.main" : "secondary.main",
+            width: 40,
+            height: 40,
+            mr: isAgent ? 1 : 0,
+            ml: isAgent ? 0 : 1,
+          }}
+        >
+          {isAgent
+            ? agent?.name?.charAt(0).toUpperCase() || "A"
+            : "U"}
+        </Avatar>
 
         <Box
           sx={{
+            maxWidth: "75%",
             display: "flex",
-            alignItems: "center",
-            justifyContent: isAgent ? "flex-start" : "flex-end",
-            pl: isAgent ? 5 : 0,
-            pr: isAgent ? 0 : 5,
-            mt: 0.5,
+            flexDirection: "column",
           }}
         >
-          {/* Audio controls for agent messages */}
-          {isAgent && (
-            <Box sx={{ display: "flex", alignItems: "center", mr: 2 }}>
-              {isPlaying ? (
-                <>
-                  {isPaused ? (
-                    <IconButton
-                      size="small"
-                      onClick={() => handleAudioControl(message, "resume")}
-                      color="primary"
-                    >
-                      <PlayArrowIcon fontSize="small" />
-                    </IconButton>
+          <Paper
+            sx={{
+              p: 2,
+              bgcolor: isAgent ? "background.paper" : "primary.light",
+              color: isAgent ? "text.primary" : "primary.contrastText",
+              borderRadius: 2,
+              position: "relative",
+            }}
+          >
+            <Typography variant="body1" component="div" sx={{ overflowWrap: "break-word", whiteSpace: "pre-wrap" }}>
+              {message.content}
+            </Typography>
+
+            {hasAudio && (
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  mt: 1,
+                  gap: 1,
+                }}
+              >
+                <IconButton
+                  size="small"
+                  onClick={() => handleAudioControl(message, "toggle")}
+                  color={isCurrentlyPlaying ? "primary" : "default"}
+                >
+                  {isCurrentlyPlaying && !isPaused ? (
+                    <PauseIcon fontSize="small" />
                   ) : (
-                    <IconButton
-                      size="small"
-                      onClick={() => handleAudioControl(message, "pause")}
-                      color="primary"
-                    >
-                      <PauseIcon fontSize="small" />
-                    </IconButton>
+                    <PlayArrowIcon fontSize="small" />
                   )}
+                </IconButton>
+
+                {isCurrentlyPlaying && (
                   <IconButton
                     size="small"
                     onClick={() => handleAudioControl(message, "stop")}
-                    color="primary"
                   >
                     <StopIcon fontSize="small" />
                   </IconButton>
-                </>
-              ) : (
+                )}
+              </Box>
+            )}
+
+            {isAgent && (
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  alignItems: "center",
+                  mt: 1,
+                  gap: 1,
+                }}
+              >
                 <IconButton
                   size="small"
-                  onClick={() => handlePlayAudio(message)}
-                  color="primary"
+                  color={ratingStates[message.message_uid] === "like" ? "success" : "default"}
+                  onClick={() => handleRateMessage(message.message_uid, "like")}
+                  disabled={ratingLoading[message.message_uid]}
+                  sx={{
+                    ...(animatingRatings[message.message_uid] && 
+                      ratingStates[message.message_uid] === "like" 
+                      ? bounceAnimation 
+                      : {})
+                  }}
                 >
-                  <PlayArrowIcon fontSize="small" />
+                  <ThumbUpIcon fontSize="small" />
                 </IconButton>
-              )}
-            </Box>
-          )}
-
-          {/* Message timestamp */}
+                <IconButton
+                  size="small"
+                  color={ratingStates[message.message_uid] === "dislike" ? "error" : "default"}
+                  onClick={() => handleRateMessage(message.message_uid, "dislike")}
+                  disabled={ratingLoading[message.message_uid]}
+                  sx={{
+                    ...(animatingRatings[message.message_uid] && 
+                      ratingStates[message.message_uid] === "dislike" 
+                      ? bounceAnimation 
+                      : {})
+                  }}
+                >
+                  <ThumbDownIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            )}
+          </Paper>
           <Typography
             variant="caption"
             color="text.secondary"
-            sx={{ fontSize: "0.7rem" }}
+            sx={{
+              alignSelf: isAgent ? "flex-start" : "flex-end",
+              mt: 0.5,
+            }}
           >
-            {formatTime(message.created_at)}
+            {formatTime(message.timestamp)}
           </Typography>
-
-          {/* Rating controls for agent messages */}
-          {isAgent && (
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                ml: 2,
-              }}
-            >
-              {isRatingLoading ? (
-                <CircularProgress size={16} />
-              ) : (
-                <>
-                  <IconButton
-                    onClick={() =>
-                      handleRateMessage(message.message_uid, "like")
-                    }
-                    color={currentRating === "like" ? "success" : "default"}
-                    size="small"
-                    disabled={isRatingLoading}
-                    sx={{
-                      p: 0.5,
-                      ...(isAnimating && currentRating === "like"
-                        ? bounceAnimation
-                        : {}),
-                    }}
-                  >
-                    <ThumbUpIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton
-                    onClick={() =>
-                      handleRateMessage(message.message_uid, "dislike")
-                    }
-                    color={currentRating === "dislike" ? "error" : "default"}
-                    size="small"
-                    disabled={isRatingLoading}
-                    sx={{
-                      p: 0.5,
-                      ...(isAnimating && currentRating === "dislike"
-                        ? bounceAnimation
-                        : {}),
-                    }}
-                  >
-                    <ThumbDownIcon fontSize="small" />
-                  </IconButton>
-                </>
-              )}
-            </Box>
-          )}
         </Box>
       </Box>
     );
@@ -860,7 +773,7 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
           ) : (
             <MessageScrollArea>
               {messages.map((message, index) => renderMessage(message, index))}
-        <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} />
             </MessageScrollArea>
           )}
         </MessageContainer>

@@ -1,23 +1,28 @@
-export const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL || "http://localhost:8005/mirai/api";
+export const API_BASE_URL = (() => {
+  // Use environment variable if defined
+  if (process.env.REACT_APP_API_BASE_URL) {
+    return process.env.REACT_APP_API_BASE_URL;
+  }
+
+  // Dynamically determine the backend URL based on current hostname
+  const protocol = window.location.protocol;
+  const hostname = window.location.hostname;
+  
+  // Keep using the standard backend port
+  return `${protocol}//${hostname}:8005/mirai/api`;
+})();
 
 export const WS_BASE_URL = (() => {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-
+  // Use environment variable if defined
   if (process.env.REACT_APP_WS_BASE_URL) {
     return process.env.REACT_APP_WS_BASE_URL;
   }
 
-  try {
-    if (API_BASE_URL) {
-      const url = new URL(API_BASE_URL);
-      return `${protocol}//${url.hostname}:${url.port || "8005"}/mirai/api/ws`;
-    }
-  } catch (e) {
-    console.error("Failed to parse API_BASE_URL for WebSocket connection:", e);
-  }
-
-  return "ws://localhost:8005/mirai/api/ws";
+  // Dynamically determine WebSocket URL using the same hostname
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const hostname = window.location.hostname;
+  
+  return `${protocol}//${hostname}:8005/mirai/api/ws`;
 })();
 
 export const API_HEADERS = {
