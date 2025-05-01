@@ -2,6 +2,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import logging
 from pymongo.errors import ConnectionFailure
 import asyncio
+import os
 from typing import Dict, List, Any, Callable, Set
 
 logger = logging.getLogger(__name__)
@@ -81,6 +82,18 @@ pubsub_client = PubSub()
 async def connect_to_mongodb():
     """Connect to MongoDB database."""
     global client, db
+    
+    # Check if we're in test mode
+    if os.environ.get("DB_SKIP_CONNECTION", "").lower() == "true":
+        logger.info("Running in test mode - skipping MongoDB connection")
+        # Create a dummy db object for testing purposes
+        class DummyDB:
+            def __getitem__(self, collection_name):
+                return None
+        
+        db = DummyDB()
+        return
+    
     try:
         client = AsyncIOMotorClient(MONGO_URI)
         # The ping command is used to check if the connection is established
@@ -102,4 +115,8 @@ async def close_mongodb_connection():
 
 def get_database():
     """Return database instance."""
+    # Check if we're in test mode - tests should mock this function
+    if os.environ.get("DB_SKIP_CONNECTION", "").lower() == "true":
+        logger.info("Test mode: get_database returning None, should be mocked in tests")
+        return None
     return db
