@@ -155,8 +155,13 @@ async def test_augment_conversation_context_no_rag(mock_process_query, sample_co
     
     # If system_message is present, check that it doesn't contain RAG-specific content
     if "system_message" in result:
-        assert "FACTUAL INFORMATION" not in result["system_message"].get("content", "")
-        assert "SEARCH RESULTS" not in result["system_message"].get("content", "")
+        # Handle the case where system_message might be None
+        system_message_content = ""
+        if result["system_message"] is not None:
+            system_message_content = result["system_message"].get("content", "")
+        
+        assert "FACTUAL INFORMATION" not in system_message_content
+        assert "SEARCH RESULTS" not in system_message_content
     
     assert result["query_type"] == QueryType.GENERAL
 
