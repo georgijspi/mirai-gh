@@ -3,10 +3,8 @@ import { render, screen, fireEvent, within } from "@testing-library/react";
 import Navigation from "../../components/Navigation";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 
-// Create a basic theme for the tests
 const theme = createTheme();
 
-// Wrap component with necessary providers
 const renderWithProviders = (component) => {
   return render(<ThemeProvider theme={theme}>{component}</ThemeProvider>);
 };
@@ -16,7 +14,6 @@ describe("Navigation Component", () => {
   const mockOnToggleApiTest = jest.fn();
 
   beforeEach(() => {
-    // Clear mock function calls before each test
     mockOnChangeTab.mockClear();
     mockOnToggleApiTest.mockClear();
   });
@@ -31,7 +28,6 @@ describe("Navigation Component", () => {
       />
     );
 
-    // Check if main navigation items are present
     expect(screen.getByText("Chat Now")).toBeInTheDocument();
     expect(screen.getByText("Conversations")).toBeInTheDocument();
     expect(screen.getByText("Statistics")).toBeInTheDocument();
@@ -48,11 +44,9 @@ describe("Navigation Component", () => {
       />
     );
 
-    // Click on Conversations tab
     fireEvent.click(screen.getByText("Conversations"));
     expect(mockOnChangeTab).toHaveBeenCalledWith("Conversations");
 
-    // Click on Statistics tab
     fireEvent.click(screen.getByText("Statistics"));
     expect(mockOnChangeTab).toHaveBeenCalledWith("Statistics");
   });
@@ -67,11 +61,9 @@ describe("Navigation Component", () => {
       />
     );
 
-    // Find the ListItemButton containing "Chat Now" text
     const chatNowButton = screen.getByRole("button", { name: /chat now/i });
     expect(chatNowButton).toHaveClass("Mui-selected");
 
-    // Find the ListItemButton containing "Conversations" text
     const conversationsButton = screen.getByRole("button", {
       name: /conversations/i,
     });
