@@ -1,11 +1,8 @@
 import React from "react";
 
-const STTConfig = ({
-  accessKey,
-  setAccessKey,
-}) => {
+const STTConfig = ({ accessKey, setAccessKey }) => {
   return (
-    <div>
+    <div data-testid="stt-config-container">
       <h4 className="text-xl font-bold mb-4 text-white">
         Speech-to-Text Configuration
       </h4>
