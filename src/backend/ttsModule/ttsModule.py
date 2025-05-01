@@ -61,20 +61,17 @@ except Exception as e:
 def split_into_sentences(text):
     """Split text into sentences using regex."""
     # First replace ellipses with a placeholder to avoid splitting them
-    text = text.replace('...', '<ELLIPSIS>')
-    
+    text = text.replace("...", "<ELLIPSIS>")
+
     # Split on sentence terminators (., !, ?) followed by space or end of string
-    sentences = re.split(
-        r'(?<=[.!?])\s+|(?<=[.!?])$', 
-        text
-    )
-    
+    sentences = re.split(r"(?<=[.!?])\s+|(?<=[.!?])$", text)
+
     # Restore ellipses
-    sentences = [s.replace('<ELLIPSIS>', '...') for s in sentences]
-    
+    sentences = [s.replace("<ELLIPSIS>", "...") for s in sentences]
+
     # Remove empty strings
     sentences = [s for s in sentences if s.strip()]
-    
+
     return sentences
 
 
@@ -85,7 +82,7 @@ def generate_speech_chunk(speaker_wav_path, text, output_path, chunk_id):
 
     logger.info(f"Starting processing sentence {chunk_id}: '{text[:30]}...'")
     chunk_start_time = time.time()
-    
+
     try:
         # Use a lock to ensure only one thread accesses the TTS model at a time
         with tts_lock:
@@ -96,7 +93,7 @@ def generate_speech_chunk(speaker_wav_path, text, output_path, chunk_id):
                 language="en",
                 file_path=output_path,
             )
-        
+
         duration = time.time() - chunk_start_time
         logger.info(f"Completed sentence {chunk_id} in {duration:.2f} seconds")
         return output_path, chunk_id, duration
@@ -110,21 +107,31 @@ def combine_audio_files(audio_files, output_path):
     try:
         # Create a text file listing all input files
         temp_list_file = f"{output_path}.list"
-        with open(temp_list_file, 'w') as f:
+        with open(temp_list_file, "w") as f:
             for audio_file in audio_files:
                 f.write(f"file '{audio_file}'\n")
-        
+
         # Use ffmpeg to concatenate files
         subprocess.run(
-            ['ffmpeg', '-f', 'concat', '-safe', '0', '-i', temp_list_file, 
-             '-c', 'copy', output_path],
+            [
+                "ffmpeg",
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                temp_list_file,
+                "-c",
+                "copy",
+                output_path,
+            ],
             check=True,
-            capture_output=True
+            capture_output=True,
         )
-        
+
         # Clean up the temporary list file
         os.remove(temp_list_file)
-        
+
         return output_path
     except subprocess.CalledProcessError as e:
         logger.error(f"FFmpeg error: {e.stdout.decode()} {e.stderr.decode()}")
@@ -137,7 +144,7 @@ def combine_audio_files(audio_files, output_path):
 def generate_speech(speaker_wav_path, text, output_path):
     """
     Text to speech generation using Coqui XTTS with sequential per-sentence processing.
-    
+
     Breaks text into sentences and processes them one at a time, but loads the entire
     model only once.
 
@@ -149,27 +156,23 @@ def generate_speech(speaker_wav_path, text, output_path):
         raise RuntimeError("TTS model is not loaded")
 
     if not os.path.exists(speaker_wav_path):
-        raise FileNotFoundError(
-            f"Speaker WAV file not found at {speaker_wav_path}"
-        )
+        raise FileNotFoundError(f"Speaker WAV file not found at {speaker_wav_path}")
 
     try:
         start_time = time.time()
-        
+
         # Create output directory
         output_dir = os.path.dirname(output_path)
         os.makedirs(output_dir, exist_ok=True)
-        
+
         # Create a temporary directory for sentence chunks
         temp_dir = os.path.join(output_dir, f"temp_{uuid.uuid4().hex}")
         os.makedirs(temp_dir, exist_ok=True)
-        
+
         # Split text into sentences
         sentences = split_into_sentences(text)
-        logger.info(
-            f"Split text into {len(sentences)} sentences for processing"
-        )
-        
+        logger.info(f"Split text into {len(sentences)} sentences for processing")
+
         # Short-circuit for single sentence
         if len(sentences) == 1:
             generate_speech_chunk(speaker_wav_path, text, output_path, 1)
@@ -177,21 +180,20 @@ def generate_speech(speaker_wav_path, text, output_path):
                 f"Speech generated in {time.time() - start_time:.2f}s (single sentence)"
             )
             return output_path
-        
+
         # Generate temporary filenames for each sentence
         temp_files = [
-            os.path.join(temp_dir, f"sentence_{i}.wav") 
-            for i in range(len(sentences))
+            os.path.join(temp_dir, f"sentence_{i}.wav") for i in range(len(sentences))
         ]
-        
+
         # Process sentences in thread pool (but with lock for TTS access)
         completed_files = []
         ordered_files = [None] * len(sentences)
-        
+
         # Use a small number of workers since we're locking anyway
         max_workers = min(4, len(sentences))
         logger.info(f"Using {max_workers} workers for TTS processing")
-        
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Submit all tasks
             future_to_index = {}
@@ -202,10 +204,10 @@ def generate_speech(speaker_wav_path, text, output_path):
                         speaker_wav_path,
                         sentence,
                         temp_files[i],
-                        i + 1
+                        i + 1,
                     )
                     future_to_index[future] = i
-            
+
             # Process results as they complete
             for future in concurrent.futures.as_completed(future_to_index):
                 idx = future_to_index[future]
@@ -218,15 +220,15 @@ def generate_speech(speaker_wav_path, text, output_path):
                     )
                 except Exception as e:
                     logger.error(f"Error in sentence processing: {e}")
-        
+
         # Remove None values from ordered_files (in case some failed)
         ordered_files = [f for f in ordered_files if f is not None]
-        
+
         # Combine all audio files in the correct order
         if ordered_files:
             logger.info(f"Combining {len(ordered_files)} audio segments")
             combine_audio_files(ordered_files, output_path)
-            
+
             # Clean up temporary files and directory
             for file in completed_files:
                 try:
@@ -237,7 +239,7 @@ def generate_speech(speaker_wav_path, text, output_path):
                 os.rmdir(temp_dir)
             except OSError:
                 pass
-                
+
             generation_time = time.time() - start_time
             logger.info(
                 f"Speech generated in {generation_time:.2f}s with parallel processing"
@@ -245,7 +247,7 @@ def generate_speech(speaker_wav_path, text, output_path):
             return output_path
         else:
             raise RuntimeError("No sentences were successfully processed")
-        
+
     except Exception as e:
         logger.error(f"Error in speech generation: {e}")
         raise

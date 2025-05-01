@@ -192,6 +192,7 @@ class LlmModelListResponse(BaseModel):
 
 class WakewordType(str, Enum):
     """Enum for wakeword types."""
+
     DEFAULT = "default"
     CUSTOM = "custom"
 

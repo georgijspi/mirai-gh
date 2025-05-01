@@ -19,15 +19,15 @@ router = APIRouter(prefix="/statistics", tags=["Statistics"])
 @router.get("/messages")
 async def get_message_statistics(
     llm_filter: Optional[str] = Query(None, description="Filter by LLM config UID"),
-    agent_filter: Optional[str] = Query(None, description="Filter by agent UID")
+    agent_filter: Optional[str] = Query(None, description="Filter by agent UID"),
 ) -> Dict[str, int]:
     """
     Get message statistics including likes, dislikes, and total counts.
-    
+
     Args:
         llm_filter: Optional filter by LLM config UID
         agent_filter: Optional filter by agent UID
-        
+
     Returns:
         Dictionary with total, likes, dislikes, and no_rating counts
     """
@@ -38,7 +38,7 @@ async def get_message_statistics(
 async def get_metrics() -> List[Dict[str, Any]]:
     """
     Get metrics data for response time, audio duration, and character count.
-    
+
     Returns:
         List of dictionaries containing response_time, audio_duration, and character_count
     """
@@ -51,10 +51,10 @@ async def get_llm_statistics(
 ) -> List[Dict[str, Any]]:
     """
     Get LLM performance statistics.
-    
+
     Args:
         llm_filter: Optional filter by LLM config UID
-        
+
     Returns:
         List of dictionaries with LLM performance statistics
     """
@@ -67,10 +67,10 @@ async def get_agent_statistics(
 ) -> List[Dict[str, Any]]:
     """
     Get agent performance statistics.
-    
+
     Args:
         agent_filter: Optional filter by agent UID
-        
+
     Returns:
         List of dictionaries with agent performance statistics
     """
