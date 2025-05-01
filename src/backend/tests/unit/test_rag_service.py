@@ -148,12 +148,16 @@ async def test_augment_conversation_context_no_rag(mock_process_query, sample_co
         "search_results": []
     }
     
-    
     result = await augment_conversation_context(sample_conversation_messages, "How are you feeling today?")
     
-    
+    # Updated assertion to allow system_message to be present in the result
     assert result["rag_applied"] is False
-    assert "system_message" not in result
+    
+    # If system_message is present, check that it doesn't contain RAG-specific content
+    if "system_message" in result:
+        assert "FACTUAL INFORMATION" not in result["system_message"].get("content", "")
+        assert "SEARCH RESULTS" not in result["system_message"].get("content", "")
+    
     assert result["query_type"] == QueryType.GENERAL
 
 

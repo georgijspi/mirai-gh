@@ -146,7 +146,7 @@ def test_format_message_history():
         {
             "message_uid": "2",
             "content": "I'm doing well, thank you for asking!",
-            "message_type": MessageType.ASSISTANT,
+            "message_type": MessageType.AGENT,
             "metadata": {"agent_name": "Morgan"}
         }
     ]
@@ -204,7 +204,7 @@ def test_create_prompt():
         {
             "message_uid": "2",
             "content": "I'm doing well, thank you for asking!",
-            "message_type": MessageType.ASSISTANT,
+            "message_type": MessageType.AGENT,
             "metadata": {"agent_name": "Morgan"}
         }
     ]
