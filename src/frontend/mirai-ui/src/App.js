@@ -7,6 +7,7 @@ import {
   CssBaseline,
   Toolbar,
 } from "@mui/material";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Navigation from "./components/Navigation";
 import GlobalChatPage from "./pages/GlobalChatPage";
 import APIModuleConfigPage from "./pages/APIModuleConfigPage";
@@ -14,6 +15,7 @@ import SettingsPage from "./pages/SettingsPage";
 import AgentConfigurationPage from "./pages/AgentConfigurationPage";
 import ConversationsPage from "./pages/ConversationsPage";
 import Statistics from "./pages/Statistics";
+import LandingPage from "./pages/LandingPage";
 
 // Create a dark theme for the entire app
 const darkTheme = createTheme({
@@ -75,7 +77,7 @@ const darkTheme = createTheme({
   },
 });
 
-function App() {
+function MainApp() {
   const [selectedTab, setSelectedTab] = useState("Conversations");
   const [config, setConfig] = useState({
     keywordModel: "Alexa",
@@ -122,41 +124,63 @@ function App() {
   };
 
   return (
-    <ThemeProvider theme={darkTheme}>
-      <CssBaseline />
-      <Box sx={{ display: "flex", minHeight: "100vh" }}>
-        <Navigation activeTab={selectedTab} onChangeTab={handleTabChange} />
+    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+      <Navigation activeTab={selectedTab} onChangeTab={handleTabChange} />
 
-        <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            p: { xs: 0, md: 3 },
-            backgroundColor:
-              selectedTab === "Statistics" ? "#121212" : "#121212",
-            overflow: "auto",
-            width: "100%",
-          }}
-        >
-          {/* Mobile toolbar spacer */}
-          <Toolbar
-            sx={{ display: { xs: "block", md: "none" }, minHeight: "64px" }}
-          />
-          <Box sx={{ maxWidth: "100%", height: "100%" }}>
-            {selectedTab === "GlobalChat" && <GlobalChatPage config={config} />}
-            {selectedTab === "Settings" && (
-              <SettingsPage
-                onConfigChange={handleConfigChange}
-                config={config}
-              />
-            )}
-            {selectedTab === "APIModuleConfig" && <APIModuleConfigPage />}
-            {selectedTab === "AgentConfiguration" && <AgentConfigurationPage />}
-            {selectedTab === "Conversations" && <ConversationsPage />}
-            {selectedTab === "Statistics" && <Statistics />}
-          </Box>
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          p: { xs: 0, md: 3 },
+          backgroundColor:
+            selectedTab === "Statistics" ? "#121212" : "#121212",
+          overflow: "auto",
+          width: "100%",
+        }}
+      >
+        {/* Mobile toolbar spacer */}
+        <Toolbar
+          sx={{ display: { xs: "block", md: "none" }, minHeight: "64px" }}
+        />
+        <Box sx={{ maxWidth: "100%", height: "100%" }}>
+          {selectedTab === "GlobalChat" && <GlobalChatPage config={config} />}
+          {selectedTab === "Settings" && (
+            <SettingsPage
+              onConfigChange={handleConfigChange}
+              config={config}
+            />
+          )}
+          {selectedTab === "APIModuleConfig" && <APIModuleConfigPage />}
+          {selectedTab === "AgentConfiguration" && <AgentConfigurationPage />}
+          {selectedTab === "Conversations" && <ConversationsPage />}
+          {selectedTab === "Statistics" && <Statistics />}
         </Box>
       </Box>
+    </Box>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider theme={darkTheme}>
+      <CssBaseline />
+      <BrowserRouter>
+        <Routes>
+          {/* Landing page as the default route */}
+          <Route path="/" element={<LandingPage />} />
+          
+          {/* App pages with navigation sidebar */}
+          <Route path="/conversations" element={<MainApp />} />
+          <Route path="/global-chat" element={<Navigate to="/conversations" replace />} />
+          <Route path="/settings" element={<Navigate to="/conversations" replace />} />
+          <Route path="/api-module" element={<Navigate to="/conversations" replace />} />
+          <Route path="/agent-config" element={<Navigate to="/conversations" replace />} />
+          <Route path="/statistics" element={<Navigate to="/conversations" replace />} />
+          
+          {/* Fallback route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
     </ThemeProvider>
   );
 }

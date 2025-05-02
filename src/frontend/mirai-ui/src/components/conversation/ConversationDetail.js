@@ -47,12 +47,10 @@ import ConversationVoice from "./ConversationVoice";
 import { getPicovoiceAccessKey } from "../../services/settingsService";
 import { API_BASE_URL } from "../../config/apiConfig";
 
-// rating icons bounce animation 
 const bounceAnimation = {
   animation: "bounce 0.5s",
 };
 
-// keyframes style for the bounce animation
 const keyframes = `
 @keyframes bounce {
   0%, 20%, 50%, 80%, 100% {transform: scale(1);}
@@ -61,7 +59,6 @@ const keyframes = `
 }
 `;
 
-// Styled components
 const MessageContainer = styled(Box)(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
@@ -114,7 +111,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
   const [ratingLoading, setRatingLoading] = useState({});
   const [animatingRatings, setAnimatingRatings] = useState({});
 
-  // Define setupWebSocket as a callback to avoid circular dependency
   const setupWebSocket = useCallback(() => {
     if (!conversationId) {
       console.warn("Cannot setup WebSocket without conversation ID");
@@ -124,7 +120,7 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
     try {
       wsEndpoint.current = `conversation/${conversationId}`;
       console.log(`Setting up WebSocket for endpoint: ${wsEndpoint.current}`);
-      websocketService.disconnect(wsEndpoint.current); // Disconnect any existing connection first
+      websocketService.disconnect(wsEndpoint.current);
       websocketService.connect(wsEndpoint.current, handleWebSocketMessage);
     } catch (error) {
       console.error("Error setting up WebSocket:", error);
@@ -134,7 +130,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
     }
   }, [conversationId]);
 
-  // Handle WebSocket messages
   const handleWebSocketMessage = (data) => {
     console.log("WebSocket message received:", data);
 
@@ -151,10 +146,8 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
           [data.message.message_uid]: data.message.rating || "none",
         }));
 
-        // Play audio with a slight delay to ensure the UI has updated
         if (data.message.message_uid) {
           setTimeout(() => {
-            // Use the message UID to stream audio directly
             playMessageAudioFromServer(data.message.message_uid);
           }, 500);
         }
@@ -164,18 +157,15 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
     }
   };
 
-  // Load conversation, agent and access key on component mount
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch conversation details
         setLoading(true);
         const response = await fetchConversationById(conversationId);
         setConversation(response);
         setTitleInput(response.title || "Conversation");
         setMessages(response.messages || []);
 
-        // Initialize rating states from loaded messages
         const initialRatingStates = {};
         response.messages?.forEach((message) => {
           if (message.message_type === "agent" && message.message_uid) {
@@ -184,7 +174,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
         });
         setRatingStates(initialRatingStates);
 
-        // Fetch agent details
         if (response.agent_uid) {
           try {
             const agentData = await fetchAgentByUid(response.agent_uid);
@@ -193,7 +182,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
               setError("Failed to load agent data - agent not found");
             } else {
               console.log("Agent data loaded:", agentData);
-              // Ensure agent has required fields for voice functionality
               if (!agentData.wakeword_type) {
                 agentData.wakeword_type = "default";
               }
@@ -213,7 +201,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
 
         setupWebSocket();
 
-        // Load access key from backend
         const key = await getPicovoiceAccessKey();
         console.log(
           "ConversationDetail: Fetched access key from server:",
@@ -238,7 +225,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
 
     fetchData();
 
-    // Cleanup
     return () => {
       websocketService.disconnect(wsEndpoint.current);
     };
@@ -257,7 +243,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
     }
   }, [loading]);
 
-  // Focus title input when editing mode is activated
   useEffect(() => {
     if (editingTitle && titleInputRef.current) {
       titleInputRef.current.focus();
@@ -272,7 +257,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
     try {
       setSending(true);
 
-      // Add user message to UI immediately with a timestamp
       const userMessage = {
         content: messageText,
         message_type: "user",
@@ -308,7 +292,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
     }
   };
 
-  // Check if audio is playing and update UI state
   useEffect(() => {
     const checkAudioState = () => {
       const { isPlaying, isPaused: audioPaused, currentAudioId } = getAudioPlaybackState();
@@ -370,12 +353,10 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
     try {
       dispatchAudioEvent("audioPlaybackPending");
       
-      // Signal which message is about to play
       dispatchAudioEvent("customAudioPlayback", {
         messageId: messageId
       });
       
-      // Stream audio directly from the server
       const response = await streamSpeech(messageId, conversationId);
       
       if (!response.ok) {
@@ -384,10 +365,8 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
         return;
       }
       
-      // Convert to audio blob
       const audioBlob = await response.blob();
       
-      // Check if blob is valid audio
       if (!audioBlob || audioBlob.type.indexOf('audio/') !== 0) {
         console.error("Invalid audio blob type:", audioBlob?.type);
         dispatchAudioEvent("audioPlaybackFailed");
@@ -396,7 +375,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
       
           const audioUrl = URL.createObjectURL(audioBlob);
       
-      // Play the audio with the message ID for tracking
       playMessageAudio(audioUrl, messageId);
       setPlayingAudioId(messageId);
       setIsPaused(false);
@@ -500,7 +478,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
 
     const newRating = ratingStates[messageId] === rating ? "none" : rating;
 
-    // Update UI state immediately for better UX
     setRatingStates((prev) => ({
       ...prev,
       [messageId]: newRating,
@@ -528,7 +505,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
     } catch (error) {
       console.error("Error rating message:", error);
 
-      // Revert UI state on error
       setRatingStates((prev) => ({
         ...prev,
         [messageId]: ratingStates[messageId] || "none",
@@ -543,7 +519,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
     const hasAudio = isAgent;
     const isCurrentlyPlaying = message.message_uid === playingAudioId;
     
-    // Check all possible timestamp fields (created_at, timestamp, updated_at)
     const timestampField = message.created_at || message.timestamp || message.updated_at;
 
     return (
@@ -642,7 +617,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
             )}
           </Paper>
 
-          {/* Spacer for symmetry */}
           {!isAgent && <Box sx={{ width: 40, height: 40, ml: 1 }} />}
         </Box>
 
@@ -656,7 +630,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
             mt: 0.5,
           }}
         >
-          {/* Audio controls for agent messages */}
           {isAgent && hasAudio && (
             <Box sx={{ display: "flex", alignItems: "center", mr: 2 }}>
               {isCurrentlyPlaying ? (
@@ -702,7 +675,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
             </Box>
           )}
 
-          {/* Message timestamp */}
           <Typography
             variant="caption"
             color="text.secondary"
@@ -728,7 +700,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
         overflow: "hidden",
       }}
     >
-      {/* Header - fixed height */}
       <AppBar
         position="static"
         color="transparent"
@@ -795,7 +766,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
         </Toolbar>
       </AppBar>
 
-      {/* Messages container - 75vh minus header */}
       <Box
         sx={{
           height: "calc(75vh - 64px)",
@@ -838,7 +808,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
         </MessageContainer>
       </Box>
 
-      {/* Error message - if present */}
       {error && (
         <Box
           sx={{
@@ -852,7 +821,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
         </Box>
       )}
 
-      {/* Input area - 25vh height */}
       <Box
         sx={{
           p: 2,
@@ -870,7 +838,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
           alignItems: "stretch",
         }}
       >
-        {/* Text input */}
         <Box
           sx={{ display: "flex", alignItems: "center", width: "100%", mb: 2 }}
         >
@@ -901,7 +868,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
           />
         </Box>
 
-        {/* Microphone component */}
         {agent && (
           <Box sx={{ width: "100%", flexGrow: 0 }}>
             <ConversationVoice
@@ -913,7 +879,6 @@ const ConversationDetail = ({ conversationId, onBack, isMobile = false }) => {
         )}
       </Box>
 
-      {/* Add the CSS keyframes */}
       <style>{keyframes}</style>
     </Box>
   );

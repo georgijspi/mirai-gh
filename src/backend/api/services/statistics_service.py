@@ -63,9 +63,15 @@ async def get_message_counts(
     return counts
 
 
-async def get_response_metrics() -> List[Dict[str, Any]]:
+async def get_response_metrics(
+    llm_filter: Optional[str] = None, agent_filter: Optional[str] = None
+) -> List[Dict[str, Any]]:
     """
     Get 3D array of response time vs TTS duration vs message character count.
+
+    Args:
+        llm_filter: Optional filter by LLM config UID
+        agent_filter: Optional filter by agent UID
 
     Returns:
         List of dictionaries containing response_time, audio_duration, and character_count
@@ -78,6 +84,12 @@ async def get_response_metrics() -> List[Dict[str, Any]]:
         "metadata.response_time": {"$exists": True},
         "metadata.audio_duration": {"$exists": True},
     }
+
+    # Add filters if provided
+    if llm_filter:
+        query["llm_config_uid"] = llm_filter
+    if agent_filter:
+        query["agent_uid"] = agent_filter
 
     projection = {
         "metadata.response_time": 1,

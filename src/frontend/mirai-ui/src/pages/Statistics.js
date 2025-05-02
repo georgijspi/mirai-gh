@@ -27,12 +27,12 @@ import {
 import { 
   getMessageStatistics,
   getLlmStatistics,
-  getAgentStatistics
+  getAgentStatistics,
+  getResponseMetrics
 } from '../services/statisticsService';
 import { fetchAPI, ENDPOINTS } from '../config/api.config';
 import { API_BASE_URL } from '../config/apiConfig';
 
-// Create a dark theme
 const darkTheme = createTheme({
   palette: {
     mode: 'dark',
@@ -91,19 +91,16 @@ const darkTheme = createTheme({
 });
 
 const Statistics = () => {
-  // States for data
   const [messageStats, setMessageStats] = useState(null);
   const [responseMetrics, setResponseMetrics] = useState(null);
   const [llmStats, setLlmStats] = useState(null);
   const [agentStats, setAgentStats] = useState(null);
   
-  // States for filters
   const [agents, setAgents] = useState([]);
   const [llmConfigs, setLlmConfigs] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState('all');
   const [selectedLlm, setSelectedLlm] = useState('all');
   
-  // Loading states
   const [loadingMessageStats, setLoadingMessageStats] = useState(true);
   const [loadingResponseMetrics, setLoadingResponseMetrics] = useState(true);
   const [loadingLlmStats, setLoadingLlmStats] = useState(true);
@@ -111,18 +108,14 @@ const Statistics = () => {
   const [loadingAgentOptions, setLoadingAgentOptions] = useState(true);
   const [loadingLlmOptions, setLoadingLlmOptions] = useState(true);
   
-  // Error states
   const [error, setError] = useState(null);
   
-  // Load agents and LLM configs on component mount
   useEffect(() => {
     const loadFilters = async () => {
       try {
         setLoadingAgentOptions(true);
         setLoadingLlmOptions(true);
         
-        // Use fetchAPI function to maintain consistency with existing code
-        // Fetch agents
         const agentData = await fetchAPI(ENDPOINTS.AGENT.LIST);
         console.log("Loaded agents data:", agentData);
         if (agentData && agentData.agents) {
@@ -130,17 +123,14 @@ const Statistics = () => {
         }
         setLoadingAgentOptions(false);
         
-        // Fetch LLM configs
         const llmData = await fetchAPI(ENDPOINTS.LLM.CONFIG);
         console.log("Loaded LLM config data:", llmData);
-        // Handle the case when llmData is an array directly
+        
         if (Array.isArray(llmData)) {
           setLlmConfigs(llmData);
         } else if (llmData && llmData.configs) {
-          // Handle the case when llmData has a configs property
           setLlmConfigs(llmData.configs || []);
         } else {
-          // Ensure we set an empty array if no data is available
           setLlmConfigs([]);
         }
         setLoadingLlmOptions(false);
@@ -155,41 +145,28 @@ const Statistics = () => {
     loadFilters();
   }, []);
   
-  // Load statistics data based on selected filters
   useEffect(() => {
     const loadStatistics = async () => {
       const agentFilter = selectedAgent === 'all' ? null : selectedAgent;
       const llmFilter = selectedLlm === 'all' ? null : selectedLlm;
       
       try {
-        // Load message statistics
         setLoadingMessageStats(true);
         const messageStatsData = await getMessageStatistics(llmFilter, agentFilter);
         setMessageStats(messageStatsData);
         setLoadingMessageStats(false);
         
-        // Load response metrics with filters
         setLoadingResponseMetrics(true);
-        const metricsUrl = new URL(`${API_BASE_URL}/statistics/metrics`);
-        if (agentFilter) metricsUrl.searchParams.append('agent_filter', agentFilter);
-        if (llmFilter) metricsUrl.searchParams.append('llm_filter', llmFilter);
-        
-        const metricsResponse = await fetch(metricsUrl);
-        if (!metricsResponse.ok) {
-          throw new Error(`Failed to load metrics: ${metricsResponse.statusText}`);
-        }
-        const metricsData = await metricsResponse.json();
+        const metricsData = await getResponseMetrics(llmFilter, agentFilter);
         console.log("Response metrics data:", metricsData);
         setResponseMetrics(metricsData);
         setLoadingResponseMetrics(false);
         
-        // Load LLM statistics
         setLoadingLlmStats(true);
         const llmStatsData = await getLlmStatistics(llmFilter);
         setLlmStats(llmStatsData);
         setLoadingLlmStats(false);
         
-        // Load agent statistics
         setLoadingAgentStats(true);
         const agentStatsData = await getAgentStatistics(agentFilter);
         setAgentStats(agentStatsData);
@@ -207,7 +184,6 @@ const Statistics = () => {
     loadStatistics();
   }, [selectedAgent, selectedLlm]);
   
-  // Handle filter changes
   const handleAgentChange = (event) => {
     setSelectedAgent(event.target.value);
   };
@@ -216,7 +192,6 @@ const Statistics = () => {
     setSelectedLlm(event.target.value);
   };
   
-  // Render the message statistics chart (pie chart)
   const renderMessageStatsChart = () => {
     if (loadingMessageStats) {
       return <Box display="flex" justifyContent="center" p={3}><CircularProgress /></Box>;
@@ -234,7 +209,6 @@ const Statistics = () => {
     
     const total = messageStats.total || 0;
     
-    // If no data, show a message
     if (total === 0) {
       return <Typography color="text.secondary" align="center">No message ratings available for the selected filter</Typography>;
     }
@@ -278,7 +252,6 @@ const Statistics = () => {
     );
   };
   
-  // Render the response metrics chart (scatter chart)
   const renderResponseMetricsChart = () => {
     if (loadingResponseMetrics) {
       return <Box display="flex" justifyContent="center" p={3}><CircularProgress /></Box>;
@@ -288,7 +261,6 @@ const Statistics = () => {
       return <Typography color="text.secondary" align="center">No response metrics available for the selected filter</Typography>;
     }
     
-    // Prepare data for the scatter chart
     const data = responseMetrics.map((metric, index) => ({
       id: index,
       x: metric.response_time || 0,
@@ -296,7 +268,6 @@ const Statistics = () => {
       size: Math.min(metric.char_count / 100 || 5, 30),
     }));
     
-    // Filter description for title
     let filterDescription = 'All agents and LLMs';
     if (selectedAgent !== 'all' && selectedLlm !== 'all') {
       const agentName = agents.find(a => a.agent_uid === selectedAgent)?.name || 'Unknown agent';
@@ -368,7 +339,6 @@ const Statistics = () => {
     );
   };
   
-  // Render the LLM statistics chart (bar chart)
   const renderLlmStatsChart = () => {
     if (loadingLlmStats) {
       return <Box display="flex" justifyContent="center" p={3}><CircularProgress /></Box>;
@@ -378,7 +348,6 @@ const Statistics = () => {
       return <Typography color="text.secondary" align="center">No LLM statistics available for the selected filter</Typography>;
     }
     
-    // Get the LLM names instead of IDs for better display
     const enhancedLlmStats = llmStats.map(stat => {
       const llmConfig = llmConfigs.find(config => config.llm_config_uid === stat._id || config.config_uid === stat._id);
       return {
@@ -439,7 +408,6 @@ const Statistics = () => {
     );
   };
   
-  // Render the agent statistics chart (line chart)
   const renderAgentStatsChart = () => {
     if (loadingAgentStats) {
       return <Box display="flex" justifyContent="center" p={3}><CircularProgress /></Box>;
@@ -449,7 +417,6 @@ const Statistics = () => {
       return <Typography color="text.secondary" align="center">No agent statistics available for the selected filter</Typography>;
     }
     
-    // Get the agent names instead of IDs for better display
     const enhancedAgentStats = agentStats.map(stat => {
       const agent = agents.find(a => a.agent_uid === stat._id);
       return {
@@ -458,7 +425,6 @@ const Statistics = () => {
       };
     });
     
-    // Calculate satisfaction rate (likes / total ratings)
     enhancedAgentStats.forEach(stat => {
       const totalRatings = (stat.like_count || 0) + (stat.dislike_count || 0);
       stat.satisfaction_rate = totalRatings > 0 ? ((stat.like_count || 0) / totalRatings) * 100 : 0;
@@ -534,7 +500,6 @@ const Statistics = () => {
             </Alert>
           )}
           
-          {/* Filters */}
           <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3 }} elevation={3}>
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' } }}>
               <Box sx={{ width: '100%', px: { xs: 0.5, md: 1 }, mb: { xs: 2, md: 0 } }}>
@@ -618,9 +583,7 @@ const Statistics = () => {
             </Box>
           </Paper>
           
-          {/* Statistics Sections */}
           <Box sx={{ display: 'flex', flexWrap: 'wrap', mx: -1 }}>
-            {/* Message Statistics - Top left */}
             <Box sx={{ width: { xs: '100%', md: '50%' }, p: { xs: 0.5, md: 1 }, height: { xs: '350px', md: '400px' } }}>
               <Card elevation={4} sx={{ height: '100%', borderRadius: 2 }}>
                 <CardHeader 
@@ -637,7 +600,6 @@ const Statistics = () => {
               </Card>
             </Box>
             
-            {/* Response Metrics - Top right */}
             <Box sx={{ width: { xs: '100%', md: '50%' }, p: { xs: 0.5, md: 1 }, height: { xs: '350px', md: '400px' } }}>
               <Card elevation={4} sx={{ height: '100%', borderRadius: 2 }}>
                 <CardHeader 
@@ -654,7 +616,6 @@ const Statistics = () => {
               </Card>
             </Box>
             
-            {/* LLM Statistics - Bottom left */}
             <Box sx={{ width: { xs: '100%', md: '50%' }, p: { xs: 0.5, md: 1 }, height: { xs: '350px', md: '400px' } }}>
               <Card elevation={4} sx={{ height: '100%', borderRadius: 2 }}>
                 <CardHeader 
@@ -671,7 +632,6 @@ const Statistics = () => {
               </Card>
             </Box>
             
-            {/* Agent Statistics - Bottom right */}
             <Box sx={{ width: { xs: '100%', md: '50%' }, p: { xs: 0.5, md: 1 }, height: { xs: '350px', md: '400px' } }}>
               <Card elevation={4} sx={{ height: '100%', borderRadius: 2 }}>
                 <CardHeader 

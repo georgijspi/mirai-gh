@@ -19,22 +19,25 @@ import {
   useMediaQuery,
   Alert,
   Snackbar,
+  DialogActions,
+  DialogContentText,
 } from "@mui/material";
 import { styled, useTheme } from "@mui/material/styles";
 import {
   Add as AddIcon,
   ArrowBack as ArrowBackIcon,
   Close as CloseIcon,
+  Delete as DeleteIcon,
 } from "@mui/icons-material";
 import { API_BASE_URL } from "../../config/apiConfig";
 import { fetchAgents } from "../../services/agentService";
 import {
   fetchConversations,
   createConversation as createConversationService,
+  deleteConversation as deleteConversationService,
 } from "../../services/conversationService";
 import ConversationDetail from "./ConversationDetail";
 
-// Styled components
 const ConversationListContainer = styled(Box)(({ theme }) => ({
   height: "100vh",
   maxHeight: "100vh",
@@ -89,14 +92,16 @@ const Conversations = () => {
   const [agents, setAgents] = useState([]);
   const [loadingAgents, setLoadingAgents] = useState(false);
 
-  // Mobile specific states
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
+  
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadConversations();
   }, []);
 
-  // When on mobile and a conversation is selected, open the detail view
   useEffect(() => {
     if (isMobile && selectedConversation) {
       setMobileDetailOpen(true);
@@ -119,7 +124,7 @@ const Conversations = () => {
   const handleNewConversation = async () => {
     try {
       setLoadingAgents(true);
-      const response = await fetchAgents(false); // Doesn't include archived agents
+      const response = await fetchAgents(false);
       setAgents(response.agents || []);
       setShowNewConversationModal(true);
     } catch (err) {
@@ -147,6 +152,38 @@ const Conversations = () => {
     }
   };
 
+  const handleDeleteClick = (conversationUid, event) => {
+    event.stopPropagation();
+    setConversationToDelete(conversationUid);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirmOpen(false);
+    setConversationToDelete(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!conversationToDelete) return;
+
+    setDeleting(true);
+    try {
+      await deleteConversationService(conversationToDelete);
+      
+      setDeleteConfirmOpen(false);
+      if (selectedConversation === conversationToDelete) {
+        setSelectedConversation(null);
+      }
+      setConversationToDelete(null);
+      await loadConversations();
+    } catch (err) {
+      setError(`Failed to delete conversation: ${err.message}`);
+      console.error("Error deleting conversation:", err);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleBackFromDetail = () => {
     if (isMobile) {
       setMobileDetailOpen(false);
@@ -163,7 +200,6 @@ const Conversations = () => {
     );
   };
 
-  // Conversation list component
   const ConversationsList = () => (
     <ConversationListContainer>
       <Box
@@ -223,28 +259,50 @@ const Conversations = () => {
               }
               elevation={1}
             >
-              <CardActionArea
-                onClick={() =>
-                  setSelectedConversation(conversation.conversation_uid)
-                }
-                sx={{ p: 1 }}
-              >
-                <CardContent sx={{ p: 1, "&:last-child": { pb: 1 } }}>
-                  <Typography
-                    variant="body1"
-                    fontWeight="medium"
-                    color="text.primary"
-                    noWrap
-                  >
-                    {conversation.title || "Untitled Conversation"}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {formatDate(
-                      conversation.updated_at || conversation.created_at
-                    )}
-                  </Typography>
-                </CardContent>
-              </CardActionArea>
+              <Box sx={{ position: 'relative', p: 1 }}>
+                <IconButton
+                  aria-label="delete conversation"
+                  size="small"
+                  onClick={(e) => handleDeleteClick(conversation.conversation_uid, e)}
+                  sx={{
+                    position: 'absolute',
+                    top: 4,
+                    right: 4,
+                    zIndex: 1,
+                    color: 'grey.500',
+                    padding: '4px',
+                    '&:hover': {
+                      color: 'error.main',
+                      backgroundColor: 'rgba(255, 0, 0, 0.08)',
+                    },
+                  }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+
+                <CardActionArea
+                  onClick={() =>
+                    setSelectedConversation(conversation.conversation_uid)
+                  }
+                  sx={{ pt: 3 }}
+                >
+                  <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
+                    <Typography
+                      variant="body1"
+                      fontWeight="medium"
+                      color="text.primary"
+                      noWrap
+                    >
+                      {conversation.title || "Untitled Conversation"}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {formatDate(
+                        conversation.updated_at || conversation.created_at
+                      )}
+                    </Typography>
+                  </CardContent>
+                </CardActionArea>
+              </Box>
             </ConversationListItem>
           ))
         )}
@@ -252,18 +310,15 @@ const Conversations = () => {
     </ConversationListContainer>
   );
 
-  // Render based on screen size
   if (isMobile) {
     return (
       <Box sx={{ height: "100%" }}>
-        {/* List view (main view on mobile) */}
         <Box
           sx={{ height: "100%", display: mobileDetailOpen ? "none" : "block" }}
         >
           <ConversationsList />
         </Box>
 
-        {/* Detail view as drawer on mobile */}
         <Drawer
           anchor="right"
           open={mobileDetailOpen}
@@ -287,7 +342,6 @@ const Conversations = () => {
           )}
         </Drawer>
 
-        {/* New Conversation Dialog */}
         <Dialog
           open={showNewConversationModal}
           onClose={() => setShowNewConversationModal(false)}
@@ -363,51 +417,75 @@ const Conversations = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        <Dialog
+          open={deleteConfirmOpen}
+          onClose={handleDeleteCancel}
+          aria-labelledby="alert-dialog-title"
+          aria-describedby="alert-dialog-description"
+        >
+          <DialogTitle id="alert-dialog-title">
+            {"Confirm Deletion"}
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText id="alert-dialog-description">
+              Are you sure you want to delete this conversation? This action cannot be undone.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleDeleteCancel} color="inherit">
+              Cancel
+            </Button>
+            <Button onClick={handleDeleteConfirm} color="error" disabled={deleting} autoFocus>
+              {deleting ? <CircularProgress size={24} color="inherit" /> : "Delete"}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     );
   }
 
-  // Desktop layout
   return (
     <Box
       sx={{
         display: "flex",
-        height: "100vh",
-        maxHeight: "100vh",
+        height: "95vh",
+        maxHeight: "95vh",
         backgroundColor: theme.palette.background.default,
         overflow: "hidden",
       }}
     >
-      {/* Conversations List Panel - fixed width */}
       <Paper
         sx={{
-          width: 320,
-          minWidth: 320,
-          height: "100vh",
-          maxHeight: "100vh",
+          width: "15vw",
+          minWidth: 380,
+          height: "95vh",
+          maxHeight: "95vh",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
           borderRadius: 0,
           borderRight: `1px solid ${theme.palette.divider}`,
           flexShrink: 0,
-          position: "relative", // Ensure proper positioning context
+          position: "relative",
         }}
         elevation={0}
       >
         <ConversationsList />
       </Paper>
 
-      {/* Conversation Detail Panel */}
       <Box
         sx={{
           flexGrow: 1,
-          height: "100vh",
-          maxHeight: "100vh",
+          height: "100%",
+          maxHeight: "100%",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
-          position: "relative", // Ensure proper positioning context
+          position: "relative",
+          maxWidth: "1200px",
+          margin: "0 auto",
+          width: "100%"
         }}
       >
         {selectedConversation ? (
@@ -433,7 +511,6 @@ const Conversations = () => {
         )}
       </Box>
 
-      {/* New Conversation Dialog */}
       <Dialog
         open={showNewConversationModal}
         onClose={() => setShowNewConversationModal(false)}
@@ -505,6 +582,30 @@ const Conversations = () => {
             </Grid>
           )}
         </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteConfirmOpen}
+        onClose={handleDeleteCancel}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          {"Confirm Deletion"}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Are you sure you want to delete this conversation? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel} color="inherit">
+            Cancel
+          </Button>
+          <Button onClick={handleDeleteConfirm} color="error" disabled={deleting} autoFocus>
+            {deleting ? <CircularProgress size={24} color="inherit" /> : "Delete"}
+          </Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );

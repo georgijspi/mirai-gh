@@ -23,8 +23,17 @@ export const getMessageStatistics = async (llmFilter = null, agentFilter = null)
 };
 
 // Get response metrics (response time, audio duration, character count)
-export const getResponseMetrics = async () => {
-  const url = `${API_BASE_URL}/statistics/metrics`;
+export const getResponseMetrics = async (llmFilter = null, agentFilter = null) => {
+  let url = `${API_BASE_URL}/statistics/metrics`;
+  
+  // Add query parameters if filters are provided
+  const params = new URLSearchParams();
+  if (llmFilter) params.append('llm_filter', llmFilter);
+  if (agentFilter) params.append('agent_filter', agentFilter);
+  
+  const queryString = params.toString();
+  if (queryString) url += `?${queryString}`;
+  
   const response = await fetch(url);
   
   if (!response.ok) {
