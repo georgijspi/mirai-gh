@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getPicovoiceAccessKey, setPicovoiceAccessKey } from '../services/settingsService';
+import { API_BASE_URL } from '../config/apiConfig';
 import {
   Box,
   Typography,
@@ -32,7 +33,6 @@ const Settings = () => {
   const [error, setError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Load the access key on component mount
   useEffect(() => {
     const fetchAccessKey = async () => {
       try {

@@ -19,7 +19,6 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
-    # GPU support using NVIDIA runtime
     runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=all

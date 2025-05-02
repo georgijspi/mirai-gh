@@ -35,14 +35,21 @@ async def get_message_statistics(
 
 
 @router.get("/metrics")
-async def get_metrics() -> List[Dict[str, Any]]:
+async def get_metrics(
+    llm_filter: Optional[str] = Query(None, description="Filter by LLM config UID"),
+    agent_filter: Optional[str] = Query(None, description="Filter by agent UID"),
+) -> List[Dict[str, Any]]:
     """
     Get metrics data for response time, audio duration, and character count.
+
+    Args:
+        llm_filter: Optional filter by LLM config UID
+        agent_filter: Optional filter by agent UID
 
     Returns:
         List of dictionaries containing response_time, audio_duration, and character_count
     """
-    return await get_response_metrics()
+    return await get_response_metrics(llm_filter=llm_filter, agent_filter=agent_filter)
 
 
 @router.get("/llm")
