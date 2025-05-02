@@ -1,0 +1,45 @@
+default:
+  image: node:20
+
+variables:
+  NODE_ENV: test
+
+cache:
+  key:
+    files:
+      - src/frontend/mirai-ui/package-lock.json
+    prefix: ${CI_COMMIT_REF_SLUG}-node20-npm
+  paths:
+    - src/frontend/mirai-ui/node_modules/
+
+stages:
+  - test
+
+frontend-unit-tests:
+  stage: test
+  script:
+    - cd src/frontend/mirai-ui
+    - npm ci
+    - mkdir -p test-reports
+    - npm run test -- --ci --reporters=default --reporters=jest-junit
+  artifacts:
+    when: always
+    reports:
+      junit: src/frontend/mirai-ui/junit.xml
+
+frontend-coverage:
+  stage: test
+  script:
+    - cd src/frontend/mirai-ui
+    - npm ci
+    - mkdir -p test-reports/coverage
+    - npm run test:coverage
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  artifacts:
+    when: always
+    paths:
+      - src/frontend/mirai-ui/coverage/
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: src/frontend/mirai-ui/coverage/cobertura-coverage.xml

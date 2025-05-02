@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* General Layout */
+.admin-dashboard {
+  display: flex;
+  height: 100vh;
+  background-color: #1e1e2f;
+  color: white;
+  font-family: Arial, sans-serif;
+}
+
+/* Sidebar Styling */
+.sidebar {
+  width: 250px;
+  background-color: #12122b;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.sidebar ul {
+  list-style-type: none;
+  padding: 0;
+}
+.sidebar ul li {
+  padding: 15px;
+  cursor: pointer;
+  background: #232344;
+  margin-bottom: 10px;
+  text-align: center;
+  border-radius: 5px;
+  transition: background 0.3s ease;
+}
+.sidebar ul li:hover {
+  background: #3b3b5f;
+}
+
+/* Main Content Styling */
+.content {
+  flex: 1;
+  padding: 20px;
+}
+
+/* Chat Window */
+.chat-window {
+  background: #2e2e45;
+  padding: 20px;
+  border-radius: 10px;
+  max-width: 600px;
+}
+.user-message {
+  background: #444466;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 10px;
+  text-align: right;
+}
+.ai-message {
+  background: #3b3b5f;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 10px;
+  text-align: left;
+}
+.chat-input {
+  width: 80%;
+  padding: 10px;
+  margin-top: 10px;
+}
+button {
+  padding: 10px 15px;
+  margin-top: 10px;
+  background: #6a6aff;
+  border: none;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background 0.3s;
+}
+button:hover {
+  background: #5a5ae6;
+}
+
+/* LLM Performance & API Module Configuration */
+.chart-placeholder,
+.api-module {
+  background: #232344;
+  padding: 20px;
+  margin-top: 20px;
+  border-radius: 10px;
+}
+.api-module input {
+  display: block;
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 8px;
+  border-radius: 5px;
+  border: none;
+}

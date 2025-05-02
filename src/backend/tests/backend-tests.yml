@@ -1,0 +1,71 @@
+default:
+  image: python:3.11
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.pip-cache"
+  # No database connections for tests
+  DB_SKIP_CONNECTION: "true"
+  PYTHONPATH: "$CI_PROJECT_DIR/src/backend"
+
+# Cache pip packages between jobs
+cache:
+  key: 
+    files:
+      - src/backend/tests/requirements-test.txt
+    prefix: ${CI_COMMIT_REF_SLUG}-py311-pip
+  paths:
+    - .pip-cache/
+    - .cache/pip
+
+stages:
+  - test
+
+# Backend unit tests
+backend-unit-tests:
+  stage: test
+  script:
+    - cd src/backend
+    - pip install --upgrade pip
+    - pip install -r tests/requirements-test.txt
+    - mkdir -p test-reports
+    - python -m pytest tests/unit/ -v --junitxml=test-reports/junit.xml
+  artifacts:
+    when: always
+    reports:
+      junit: src/backend/test-reports/junit.xml
+
+# Backend integration tests
+backend-integration-tests:
+  stage: test
+  script:
+    - cd src/backend
+    - pip install --upgrade pip
+    - pip install -r tests/requirements-test.txt
+    - mkdir -p test-reports
+    - python -m pytest tests/integration/ -v --junitxml=test-reports/junit.xml || true
+  artifacts:
+    when: always
+    reports:
+      junit: src/backend/test-reports/junit.xml
+  # Only run if integration tests directory contains tests
+  rules:
+    - exists:
+        - src/backend/tests/integration/*.py
+
+# Backend coverage report
+backend-coverage:
+  stage: test
+  script:
+    - cd src/backend
+    - pip install --upgrade pip
+    - pip install -r tests/requirements-test.txt
+    - mkdir -p test-reports/coverage
+    - python -m pytest tests/ --cov=api --cov-report=xml:test-reports/coverage/coverage.xml
+  artifacts:
+    when: always
+    paths:
+      - src/backend/test-reports/coverage/
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: src/backend/test-reports/coverage/coverage.xml 

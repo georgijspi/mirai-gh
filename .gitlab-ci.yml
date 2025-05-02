@@ -1,0 +1,31 @@
+stages:
+  - test
+
+variables:
+  NODE_ENV: test
+  DB_SKIP_CONNECTION: "true"
+
+cache:
+  key:
+    prefix: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - src/frontend/mirai-ui/node_modules/
+    - src/backend/.venv/
+
+include:
+  - local: src/backend/tests/backend-tests.yml
+  - local: src/frontend/mirai-ui/.gitlab/ci.yml
+
+backend-test:
+  extends: backend-unit-tests
+  rules:
+    - changes:
+        - src/backend/**/*.py
+
+frontend-test:
+  extends: frontend-unit-tests
+  rules:
+    - changes:
+        - src/frontend/mirai-ui/src/**/*
+        - src/frontend/mirai-ui/package.json
+        - src/frontend/mirai-ui/package-lock.json

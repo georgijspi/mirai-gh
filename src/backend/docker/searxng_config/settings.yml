@@ -1,0 +1,57 @@
+use_default_settings: true
+
+server:
+  secret_key: "MirAI-SearchEngine-Key-12345"
+  bind_address: "0.0.0.0"
+  port: 8080
+  api_disabled: false
+  limiter: false
+  base_url: "http://localhost:8080/"
+
+search:
+  formats:
+    - html
+    - json
+  default_doi_resolver: "doi.org"
+  autocomplete: ""
+
+general:
+  debug: false
+  instance_name: "MirAI Search"
+
+ui:
+  static_use_hash: false
+  default_theme: simple
+  theme_args:
+    simple_style: light
+
+engines:
+  - name: google
+    shortcut: g
+    engine: google
+    use_mobile_ui: false
+    disabled: false
+  - name: duckduckgo
+    shortcut: d
+    engine: duckduckgo
+    disabled: false
+  - name: bing
+    shortcut: b
+    engine: bing
+    disabled: false
+  - name: brave
+    shortcut: br
+    engine: brave
+    disabled: false
+  - name: qwant
+    shortcut: q
+    engine: qwant
+    disabled: false
+  - name: wikipedia
+    shortcut: w
+    engine: wikipedia
+    disabled: false
+  - name: yahoo
+    shortcut: y
+    engine: yahoo
+    disabled: false 
