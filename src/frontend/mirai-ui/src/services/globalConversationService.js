@@ -4,10 +4,10 @@ export async function fetchGlobalConversation() {
   return fetchAPI(ENDPOINTS.GLOBAL_CONVERSATION.GET, { method: "GET" });
 }
 
-export async function sendGlobalMessage(content) {
+export async function sendGlobalMessage(content, agent_uid) {
   return fetchAPI(ENDPOINTS.GLOBAL_CONVERSATION.SEND_MESSAGE, {
     method: "POST",
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, agent_uid }),
   });
 }
 

@@ -28,6 +28,7 @@ import {
   KeyboardArrowDown as ExpandMoreIcon,
   KeyboardArrowUp as ExpandLessIcon,
   BugReport as TestIcon,
+  Science as ScienceIcon,
 } from "@mui/icons-material";
 
 const drawerWidth = 260;
@@ -86,44 +87,12 @@ const Navigation = ({
       }}
     >
       <DrawerHeader>
-        <Typography variant="h6" fontWeight="bold">
-          MirAI Admin
+        <Typography variant="h6" fontWeight="bold" color="#ffffff">
+          MirAI
         </Typography>
       </DrawerHeader>
       <Divider sx={{ bgcolor: "rgba(255, 255, 255, 0.12)" }} />
       <List sx={{ flexGrow: 1, p: 2 }}>
-        <StyledListItem>
-          <ListItemButton
-            onClick={() => handleTabChange("ChatNow")}
-            selected={activeTab === "ChatNow"}
-            sx={{
-              borderRadius: 1,
-              "&.Mui-selected": {
-                backgroundColor: "rgba(144, 202, 249, 0.16)",
-                "&:hover": {
-                  backgroundColor: "rgba(144, 202, 249, 0.24)",
-                },
-              },
-              "&:hover": {
-                backgroundColor: "rgba(255, 255, 255, 0.08)",
-              },
-            }}
-          >
-            <ListItemIcon sx={{ minWidth: 40, color: "text.secondary" }}>
-              <MessageIcon
-                color={activeTab === "ChatNow" ? "primary" : "inherit"}
-              />
-            </ListItemIcon>
-            <ListItemText
-              primary="Chat Now"
-              primaryTypographyProps={{
-                color:
-                  activeTab === "ChatNow" ? "primary.main" : "text.primary",
-              }}
-            />
-          </ListItemButton>
-        </StyledListItem>
-
         <StyledListItem>
           <ListItemButton
             onClick={() => handleTabChange("Conversations")}
@@ -185,6 +154,48 @@ const Navigation = ({
               primaryTypographyProps={{
                 color:
                   activeTab === "Statistics" ? "primary.main" : "text.primary",
+              }}
+            />
+          </ListItemButton>
+        </StyledListItem>
+
+        <ListItem sx={{ mt: 2 }}>
+          <Typography
+            variant="overline"
+            color="text.secondary"
+            sx={{ fontSize: "0.75rem", letterSpacing: 1 }}
+          >
+            Beta Features
+          </Typography>
+        </ListItem>
+
+        <StyledListItem>
+          <ListItemButton
+            onClick={() => handleTabChange("ChatNow")}
+            selected={activeTab === "ChatNow"}
+            sx={{
+              borderRadius: 1,
+              "&.Mui-selected": {
+                backgroundColor: "rgba(144, 202, 249, 0.16)",
+                "&:hover": {
+                  backgroundColor: "rgba(144, 202, 249, 0.24)",
+                },
+              },
+              "&:hover": {
+                backgroundColor: "rgba(255, 255, 255, 0.08)",
+              },
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 40, color: "text.secondary" }}>
+              <ScienceIcon
+                color={activeTab === "ChatNow" ? "primary" : "inherit"}
+              />
+            </ListItemIcon>
+            <ListItemText
+              primary="Global Chat"
+              primaryTypographyProps={{
+                color:
+                  activeTab === "ChatNow" ? "primary.main" : "text.primary",
               }}
             />
           </ListItemButton>

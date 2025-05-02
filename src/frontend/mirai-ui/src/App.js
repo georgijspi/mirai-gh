@@ -143,6 +143,7 @@ function MainApp() {
           sx={{ display: { xs: "block", md: "none" }, minHeight: "64px" }}
         />
         <Box sx={{ maxWidth: "100%", height: "100%" }}>
+          {selectedTab === "ChatNow" && <GlobalChatPage config={config} />}
           {selectedTab === "GlobalChat" && <GlobalChatPage config={config} />}
           {selectedTab === "Settings" && (
             <SettingsPage
