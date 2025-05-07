@@ -7,15 +7,15 @@ from pathlib import Path
 class FileStorageService:
     async def store_wakeword_model(self, file: UploadFile) -> str:
         """Store a wakeword model file and return its path."""
-        if not file.filename.endswith(".pv"):
-            raise ValueError("Invalid file type. Only .pv files are allowed.")
+        if not file.filename.endswith(".ppn"):
+            raise ValueError("Invalid file type. Only .ppn files are allowed.")
 
         # Create wakeword models directory if it doesn't exist
         models_dir = Path("../frontend/mirai-ui/public/models")
         models_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate unique filename
-        unique_filename = f"{uuid.uuid4()}.pv"
+        unique_filename = f"{uuid.uuid4()}.ppn"
         file_path = models_dir / unique_filename
 
         # Write file
