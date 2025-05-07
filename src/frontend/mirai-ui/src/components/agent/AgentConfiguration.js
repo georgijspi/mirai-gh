@@ -40,6 +40,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import ComputerIcon from "@mui/icons-material/Computer";
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
+import { BuiltInKeyword } from "@picovoice/porcupine-web";
 
 // Add API_BASE_URL import
 const API_BASE_URL = "http://localhost:8005/mirai/api";
@@ -66,6 +67,8 @@ const AgentConfiguration = () => {
     llm_config_uid: "",
     profile_picture: null,
     custom_voice: null,
+    wakeword_type: "default",
+    built_in_wakeword: "Computer",
     is_archived: false,
   });
 
