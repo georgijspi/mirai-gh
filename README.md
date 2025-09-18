@@ -1,6 +1,6 @@
 # MirAI: Local Assistant
 
-[![Demo Video](https://img.shields.io/badge/Demo-Video%20Walkthrough-red?style=for-the-badge&logo=youtube)](docs/video-walk-through/2025-05-02%2016-49-53.mp4)
+[![Demo Video](https://img.shields.io/badge/Demo-Video%20Walkthrough-red?style=for-the-badge&logo=youtube)](https://youtu.be/xsxF80DVYkc)
 
 **MirAI** (未来) is an open-source, privacy-focused local smart assistant that prioritizes user data security by running entirely on local hardware. Unlike cloud-based assistants, MirAI ensures your conversations and data never leave your device, giving you complete control over your privacy.
 
@@ -76,7 +76,7 @@ MirAI consists of two main components:
 - **[User Manual](docs/documentation/MirAI_UserManual.pdf)** - End-user guide and instructions
 
 ### 🎥 Demo & Walkthrough
-- **[Video Walkthrough](docs/video-walk-through/2025-05-02%2016-49-53.mp4)** - Complete system demonstration (5 minutes)
+- **[Video Walkthrough](https://youtu.be/xsxF80DVYkc)** - Complete system demonstration (5 minutes)
 
 ## 🚀 Quick Start
 

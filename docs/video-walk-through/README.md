@@ -1,4 +1,4 @@
-The video walk through is [here](2025-05-02%2016-49-53.mp4).
+The video walk through is [here](https://youtu.be/xsxF80DVYkc).
 
 Instructions:
 
