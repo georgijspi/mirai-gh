@@ -1,7 +1,7 @@
 # MirAI: Local Assistant
 
 <div align="center">
-  <video controls width="100%">
+  <video controls width="100%" style="max-width: 800px;">
     <source src="docs/video-walk-through/2025-05-02%2016-49-53.mp4" type="video/mp4">
     Your browser does not support the video tag.
   </video>
